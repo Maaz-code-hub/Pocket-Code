@@ -1,0 +1,19 @@
+# Secrets — never commit (copy .env.example instead)
+.env
+.env.*
+!.env.example
+
+# Local file storage (only used when Supabase isn't configured)
+data/
+
+# Dependencies & logs
+node_modules/
+npm-debug.log*
+*.log
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
