@@ -1,5 +1,5 @@
 {
-  "name": "personal-code-saver",
+  "name": "pocket-code",
   "version": "1.0.0",
   "description": "Personal cloud saver for code and docs — folders, preview, download. No sign-in.",
   "main": "server.js",

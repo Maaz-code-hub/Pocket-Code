@@ -282,7 +282,7 @@ async function purgeTrash() {
 (async () => {
   await storage.init?.();
   server.listen(PORT, () => {
-    console.log(`Code Saver running on http://localhost:${PORT}`);
+    console.log(`Pocket Code running on http://localhost:${PORT}`);
     console.log(`Storing files in ${storage.name}`);
     if (ACCESS_KEY) console.log('Access key enabled: the site asks for a key to open.');
     if (EDIT_KEY) console.log('Edit key enabled: view-only until unlocked.');

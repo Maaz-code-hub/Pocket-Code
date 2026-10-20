@@ -309,7 +309,7 @@ function render() {
   const files = data ? data.files.filter(match) : [];
   const total = data ? data.folders.length + data.files.length : 0;
 
-  document.title = isRoot ? 'Code Saver' : `${path.at(-1)} · Code Saver`;
+  document.title = isRoot ? 'Pocket Code' : `${path.at(-1)} · Pocket Code`;
 
   const crumbs = isRoot ? '' : `
     <nav class="crumbs">
@@ -491,7 +491,7 @@ function renderTrash() {
   const data = state.data;
   const q = searchInput.value.trim().toLowerCase();
   const items = data ? data.items.filter(i => !q || i.path.join('/').toLowerCase().includes(q)) : [];
-  document.title = 'Trash · Code Saver';
+  document.title = 'Trash · Pocket Code';
   const daysLeft = (i) => Math.max(0, Math.ceil((i.expiresAt - Date.now()) / 86400000));
 
   app.innerHTML = `

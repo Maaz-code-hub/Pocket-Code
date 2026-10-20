@@ -1,5 +1,5 @@
 services:
-  code-saver:
+  pocket-code:
     build: .
     restart: unless-stopped
     ports:

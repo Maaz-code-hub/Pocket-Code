@@ -1,4 +1,4 @@
-# Code Saver
+# Pocket Code
 
 A personal cloud for code snippets and docs. No sign-in, no npm dependencies.
 
