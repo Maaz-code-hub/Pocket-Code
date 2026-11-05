@@ -27,8 +27,43 @@ const ICONS = {
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
   unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 017.8-1.2"/>',
   wrap: '<path d="M4 6h16M4 12h13a3 3 0 010 6h-4M4 18h5"/><path d="M15 16l-2 2 2 2"/>',
+  bold: '<path d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z"/><path d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z"/>',
+  italic: '<line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/>',
+  underline: '<path d="M6 3v7a6 6 0 0012 0V3"/><line x1="4" y1="21" x2="20" y2="21"/>',
+  strikethrough: '<path d="M16 4H9a3 3 0 00-3 3v1a3 3 0 003 3h6a3 3 0 013 3v1a3 3 0 01-3 3H8"/><line x1="4" y1="12" x2="20" y2="12"/>',
+  alignLeft: '<line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/>',
+  alignCenter: '<line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/>',
+  alignRight: '<line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/>',
+  alignJustify: '<line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/>',
+  listUl: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
+  listOl: '<line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/>',
+  table: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>',
+  undo: '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>',
+  redo: '<path d="M21 7v6h-6"/><path d="M3 17a9 9 0 019-9 9 9 0 016 2.3L21 13"/>',
+  clear: '<path d="M18 6L6 18M6 6l12 12"/>',
+  word: '<rect x="3" y="3" width="18" height="18" rx="3.5" fill="#185abd" stroke="none"/><path d="M6.8 7.5l2.4 8.5h1.5l1.6-5.8 1.6 5.8h1.5l2.4-8.5h-1.8l-1.3 5.5-1.5-5.5h-1.6l-1.5 5.5-1.3-5.5H6.8z" fill="#ffffff" stroke="none"/>',
+  save: '<path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+  indent: '<polyline points="3 8 7 12 3 16"/><line x1="21" y1="12" x2="11" y2="12"/><line x1="21" y1="6" x2="11" y2="6"/><line x1="21" y1="18" x2="11" y2="18"/>',
+  outdent: '<polyline points="7 8 3 12 7 16"/><line x1="21" y1="12" x2="11" y2="12"/><line x1="21" y1="6" x2="11" y2="6"/><line x1="21" y1="18" x2="11" y2="18"/>',
+  subscript: '<path d="M4 6l6 6M10 6l-6 6"/><path d="M16 16c0-.9.7-1.5 1.5-1.5s1.5.6 1.5 1.5c0 .9-.8 1.3-1.4 1.8h1.4"/>',
+  superscript: '<path d="M4 12l6 6M10 12l-6 6"/><path d="M16 7c0-.9.7-1.5 1.5-1.5s1.5.6 1.5 1.5c0 .9-.8 1.3-1.4 1.8h1.4"/>',
+  textColor: '<path d="M6 16h12M12 4L6 18h2.5l1.3-3.2h4.4l1.3 3.2H18L12 4z"/><line x1="3" y1="21" x2="21" y2="21" stroke-width="2.5" stroke="#185abd"/>',
+  highlighter: '<path d="M9 11l-6 6v3h3l6-6"/><path d="M22 6a3 3 0 00-4.24-4.24l-7.5 7.5 4.24 4.24L22 6z"/><line x1="3" y1="21" x2="21" y2="21" stroke-width="2.5" stroke="#facc15"/>',
+  horizontalRule: '<line x1="3" y1="12" x2="21" y2="12" stroke-width="2"/>',
+  callout: '<rect x="3" y="4" width="18" height="16" rx="3"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="14" y2="12"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  margins: '<rect x="4" y="3" width="16" height="18" rx="2"/><rect x="8" y="7" width="8" height="10" stroke-dasharray="2 2"/>',
+  marginsNarrow: '<rect x="4" y="3" width="16" height="18" rx="2"/><rect x="6" y="5" width="12" height="14" stroke-dasharray="2 2"/>',
+  marginsWide: '<rect x="4" y="3" width="16" height="18" rx="2"/><rect x="9" y="8" width="6" height="8" stroke-dasharray="2 2"/>',
+  pageLayout: '<rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/>',
+  zoomIn: '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>',
+  zoomOut: '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/>',
+  maximize: '<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><polyline points="21 15 21 21 15 21"/><polyline points="3 9 3 3 9 3"/>',
+  minimize: '<polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><polyline points="14 10 21 3"/><polyline points="3 21 10 14"/>',
+  quote: '<path d="M3 11h4a3 3 0 01-3 3v2a5 5 0 005-5V6H3v5zm11 0h4a3 3 0 01-3 3v2a5 5 0 005-5V6h-6v5z"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
 };
-const icon = (name) => `<svg viewBox="0 0 24 24">${ICONS[name]}</svg>`;
+const icon = (name) => `<svg viewBox="0 0 24 24">${ICONS[name] || ''}</svg>`;
 
 const CODE_EXT = {
   js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
@@ -57,6 +92,7 @@ function kind(name) {
   const e = ext(name);
   if (IMG_EXT.includes(e)) return 'img';
   if (e === 'pdf') return 'pdf';
+  if (e === 'docx' || e === 'doc') return 'docx';
   if (e === 'md' || e === 'markdown') return 'md';
   if (VIDEO_EXT.includes(e)) return 'video';
   if (AUDIO_EXT.includes(e)) return 'audio';
@@ -68,7 +104,7 @@ const isTextual = (name) => ['code', 'md', 'text'].includes(kind(name));
 
 function fileIcon(name) {
   const k = kind(name), e = ext(name);
-  const cls = { code: 'code', md: 'doc', text: 'doc', img: 'img', pdf: 'pdf' }[k] || '';
+  const cls = { code: 'code', md: 'doc', text: 'doc', docx: 'doc', img: 'img', pdf: 'pdf' }[k] || '';
   return `<div class="ficon ${cls}">${esc((e || 'txt').slice(0, 4))}</div>`;
 }
 
@@ -149,16 +185,17 @@ async function loadUsage() {
 const scheduleUsage = () => { clearTimeout(usageTimer); usageTimer = setTimeout(loadUsage, 1200); };
 
 /* ---------- Modal ---------- */
-function modal({ title, sub = '', body = '', foot = '', wide = false, headTools = '', onClose }) {
+function modal({ title = '', sub = '', body = '', foot = '', wide = false, extraClass = '', noHead = false, headTools = '', onClose }) {
   const bg = document.createElement('div');
-  bg.className = 'modal-bg';
+  bg.className = 'modal-bg' + (extraClass ? ` bg-${extraClass}` : '');
   bg.innerHTML = `
-    <div class="modal${wide ? ' wide' : ''}" role="dialog" aria-modal="true">
+    <div class="modal${wide ? ' wide' : ''}${extraClass ? ' ' + extraClass : ''}" role="dialog" aria-modal="true">
+      ${noHead ? '' : `
       <div class="modal-head">
         <div style="flex:1;min-width:0"><h2>${esc(title)}</h2>${sub ? `<div class="sub">${sub}</div>` : ''}</div>
         ${headTools}
         <button class="icon-btn" data-close title="Close">${icon('close')}</button>
-      </div>
+      </div>`}
       ${body}
       ${foot ? `<div class="modal-foot">${foot}</div>` : ''}
     </div>`;
@@ -334,7 +371,13 @@ function render() {
            <button data-act="uploadFolder">${icon('folder')} Folder</button>
          </div>
        </div>
-       <button class="btn primary" data-act="newDoc">${icon('plus')} New doc / code</button>`;
+       <div class="menu-wrap">
+         <button class="btn primary" data-act="newMenu">${icon('plus')} New ${icon('down')}</button>
+         <div class="menu" hidden>
+           <button data-act="newDocFile">${icon('word')} Word Document (.docx)</button>
+           <button data-act="newDoc">${icon('code')} Code / Text file</button>
+         </div>
+       </div>`;
 
   let content;
   if (!data) content = '<div class="spin">Loading…</div>';
@@ -349,11 +392,12 @@ function render() {
         <div class="big">${icon('file')}</div>
         <h3>This folder is empty</h3>
         ${edit ? `
-        <p>Write a snippet, upload files or a whole folder, or add a sub-folder.<br>You can also drag &amp; drop files and folders anywhere.</p>
+        <p>Write a snippet, upload files or a whole folder, or create a Word document.<br>You can also drag &amp; drop files and folders anywhere.</p>
         <div class="actions">
           <button class="btn" data-act="newFolder">${icon('folderPlus')} New folder</button>
           <button class="btn" data-act="uploadFiles">${icon('upload')} Upload</button>
-          <button class="btn primary" data-act="newDoc">${icon('code')} Write code / doc</button>
+          <button class="btn" data-act="newDocFile">${icon('word')} Word doc</button>
+          <button class="btn primary" data-act="newDoc">${icon('code')} Code / doc</button>
         </div>` : '<p>Nothing in here yet.</p>'}
       </div>`;
   else {
@@ -414,15 +458,29 @@ function render() {
 
 function bindActions() {
   const path = state.path;
-  const menu = $('.menu', app);
+  const closeAllMenus = () => app.querySelectorAll('.menu').forEach(m => m.hidden = true);
   const acts = {
-    newFolder: createFolder,
-    newDoc: () => openEditor(),
-    uploadFiles: () => { if (menu) menu.hidden = true; fileInput.click(); },
-    uploadFolder: () => { menu.hidden = true; dirInput.click(); },
-    uploadMenu: (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; },
+    newFolder: () => { closeAllMenus(); createFolder(); },
+    newDoc: () => { closeAllMenus(); openEditor(); },
+    newDocFile: () => { closeAllMenus(); openDocEditor(); },
+    uploadFiles: () => { closeAllMenus(); fileInput.click(); },
+    uploadFolder: () => { closeAllMenus(); dirInput.click(); },
+    uploadMenu: (e) => {
+      e.stopPropagation();
+      const m = e.currentTarget.nextElementSibling;
+      const wasHidden = m.hidden;
+      closeAllMenus();
+      m.hidden = !wasHidden;
+    },
+    newMenu: (e) => {
+      e.stopPropagation();
+      const m = e.currentTarget.nextElementSibling;
+      const wasHidden = m.hidden;
+      closeAllMenus();
+      m.hidden = !wasHidden;
+    },
   };
-  app.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', (e) => acts[b.dataset.act](e)));
+  app.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', (e) => acts[b.dataset.act]?.(e)));
 
   app.querySelectorAll('[data-stop]').forEach(a => a.addEventListener('click', e => e.stopPropagation()));
   app.querySelectorAll('[data-open]').forEach(r => r.onclick = () => openPreview(r.dataset.open));
@@ -449,7 +507,7 @@ function bindActions() {
     moveToTrash(`/files/${joinPath([...path, b.dataset.deleteFile])}`, b.dataset.deleteFile);
   });
 }
-document.addEventListener('click', () => { const m = $('.menu', app); if (m) m.hidden = true; });
+document.addEventListener('click', () => { app.querySelectorAll('.menu').forEach(m => m.hidden = true); });
 
 async function createFolder() {
   const path = state.path;
@@ -780,6 +838,1739 @@ function openEditor(existing = null, content = '') {
   setTimeout(() => { cm.refresh(); if (existing) cm.focus(); else nameIn.focus(); });
 }
 
+/* ---------- Word Document (.docx) & MHTML Processing Utilities ---------- */
+function escXml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function colorToHex(col) {
+  if (!col) return '';
+  col = col.trim();
+  if (col.startsWith('#')) {
+    const hex = col.slice(1);
+    return (hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex.slice(0, 6)).toUpperCase();
+  }
+  const m = col.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (m) {
+    const r = Number(m[1]).toString(16).padStart(2, '0');
+    const g = Number(m[2]).toString(16).padStart(2, '0');
+    const b = Number(m[3]).toString(16).padStart(2, '0');
+    return (r + g + b).toUpperCase();
+  }
+  return '';
+}
+
+function decodeQuotedPrintable(str) {
+  const withoutSoftBreaks = str.replace(/=(?:\r\n|\n|\r)/g, '');
+  const bytes = [];
+  for (let i = 0; i < withoutSoftBreaks.length; i++) {
+    const ch = withoutSoftBreaks[i];
+    if (ch === '=' && i + 2 < withoutSoftBreaks.length && /^[0-9A-Fa-f]{2}$/.test(withoutSoftBreaks.slice(i + 1, i + 3))) {
+      bytes.push(parseInt(withoutSoftBreaks.slice(i + 1, i + 3), 16));
+      i += 2;
+    } else {
+      const code = withoutSoftBreaks.charCodeAt(i);
+      if (code < 128) bytes.push(code);
+      else {
+        const enc = new TextEncoder().encode(ch);
+        for (const b of enc) bytes.push(b);
+      }
+    }
+  }
+  try {
+    return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
+  } catch {
+    return withoutSoftBreaks.replace(/=([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+  }
+}
+
+function parseMhtml(mht) {
+  if (!mht || typeof mht !== 'string') return null;
+  let boundary = '';
+  const bMatch = mht.match(/boundary=["']?([^"'\r\n;]+)/i);
+  if (bMatch) boundary = bMatch[1].trim();
+  else {
+    const m = mht.match(/^--([^\r\n]+)/m);
+    if (m) boundary = m[1].trim();
+  }
+  if (!boundary) return null;
+
+  const parts = mht.split(new RegExp('--' + boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  let htmlBody = '';
+  const images = new Map();
+
+  for (const part of parts) {
+    if (!part || part.trim() === '--' || part.trim() === '') continue;
+    const splitIdx = part.search(/\r?\n\r?\n/);
+    if (splitIdx === -1) continue;
+    const headerBlock = part.slice(0, splitIdx);
+    const bodyContent = part.slice(splitIdx).replace(/^\r?\n\r?\n/, '');
+
+    const getHeader = (name) => {
+      const regex = new RegExp('^' + name + ':[ \t]*(.*)$', 'im');
+      const match = headerBlock.match(regex);
+      return match ? match[1].trim() : '';
+    };
+
+    const contentType = (getHeader('Content-Type').split(';')[0] || '').toLowerCase().trim();
+    const encoding = getHeader('Content-Transfer-Encoding').toLowerCase().trim();
+    const location = getHeader('Content-Location').trim();
+    const contentId = getHeader('Content-ID').replace(/[<>]/g, '').trim();
+
+    if (contentType === 'text/html' || contentType === 'text/plain') {
+      let decoded = bodyContent;
+      if (encoding === 'quoted-printable') {
+        decoded = decodeQuotedPrintable(decoded);
+      } else if (encoding === 'base64') {
+        try { decoded = atob(decoded.replace(/\s+/g, '')); } catch {}
+      }
+      if (!htmlBody || contentType === 'text/html') {
+        htmlBody = decoded;
+      }
+    } else if (contentType.startsWith('image/') || encoding === 'base64' || /image\d+\./i.test(location)) {
+      const mime = contentType.startsWith('image/') ? contentType : 'image/png';
+      const cleanB64 = bodyContent.replace(/\s+/g, '');
+      const dataUri = `data:${mime};base64,${cleanB64}`;
+      if (location) {
+        images.set(location, dataUri);
+        const base = location.split('/').pop();
+        if (base) images.set(base, dataUri);
+      }
+      if (contentId) {
+        images.set('cid:' + contentId, dataUri);
+        images.set(contentId, dataUri);
+      }
+    }
+  }
+
+  if (!htmlBody) return null;
+
+  for (const [loc, uri] of images.entries()) {
+    htmlBody = htmlBody.split(loc).join(uri);
+  }
+
+  const bodyMatch = htmlBody.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) {
+    htmlBody = bodyMatch[1];
+  }
+
+  return htmlBody.trim();
+}
+
+function cleanDocHtml(html) {
+  if (!html || typeof html !== 'string') return '';
+  if (!html.includes('mhtDocumentPart') && !html.includes('MIME-Version:') && !html.includes('Content-Location:')) {
+    return html;
+  }
+
+  // 1. Try standard MHTML parsing if it has a boundary
+  const parsed = parseMhtml(html);
+  if (parsed && parsed.trim().length > 0 && !parsed.includes('mhtDocumentPart')) {
+    return parsed;
+  }
+
+  // 2. Fallback: Parse embedded MIME boundaries inside HTML/paragraphs
+  const imgRegex = /------=mhtDocumentPart[\s\S]*?Content-Type:\s*(image\/[a-zA-Z0-9+.-]+)[\s\S]*?Content-Transfer-Encoding:\s*base64[\s\S]*?(?:Content-Location:\s*([^\s<>"]+))?[\s\S]*?([A-Za-z0-9+/=]{60,})/gi;
+  const extractedImages = [];
+  let m;
+  while ((m = imgRegex.exec(html)) !== null) {
+    extractedImages.push({
+      mime: m[1],
+      loc: m[2] || '',
+      b64: m[3].replace(/\s+/g, '')
+    });
+  }
+
+  let cleaned = html
+    .replace(/<p[^>]*>\s*MIME-Version:[^<]*<\/p>/gi, '')
+    .replace(/<p[^>]*>\s*------=mhtDocumentPart[^<]*<\/p>/gi, '')
+    .replace(/<p[^>]*>\s*Content-Type:[^<]*<\/p>/gi, '')
+    .replace(/<p[^>]*>\s*Content-Transfer-Encoding:[^<]*<\/p>/gi, '')
+    .replace(/<p[^>]*>\s*Content-Location:[^<]*<\/p>/gi, '')
+    .replace(/MIME-Version:\s*1\.0[^\n<>]*(?:Content-Type:[^\n<>]*)?/gi, '')
+    .replace(/------=mhtDocumentPart[^\n<>]*/gi, '')
+    .replace(/Content-Type:\s*text\/html[^\n<>]*/gi, '')
+    .replace(/Content-Transfer-Encoding:\s*(?:quoted-printable|base64|7bit|8bit)[^\n<>]*/gi, '')
+    .replace(/Content-Location:\s*file:\/\/\/[^\n<>]*/gi, '')
+    .replace(/------=mhtDocumentPart--/gi, '');
+
+  for (const img of extractedImages) {
+    cleaned = cleaned.replace(img.b64, '');
+  }
+
+  cleaned = cleaned.replace(/<p[^>]*>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>/gi, '');
+
+  if (!cleaned.includes('<p>') && !cleaned.includes('<h1>') && !cleaned.includes('<div>')) {
+    cleaned = cleaned.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => `<p>${l}</p>`).join('');
+  }
+
+  if (extractedImages.length > 0) {
+    for (const img of extractedImages) {
+      cleaned += `<p><img src="data:${img.mime};base64,${img.b64}" style="max-width:100%"></p>`;
+    }
+  }
+
+  return cleaned.trim();
+}
+
+const getWrappedDocxHtml = (htmlContent) => `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #111111; }
+    h1 { font-size: 20pt; font-weight: bold; margin-bottom: 8pt; color: #1f4e79; }
+    h2 { font-size: 15pt; font-weight: bold; margin-bottom: 6pt; color: #2e75b6; }
+    h3 { font-size: 12.5pt; font-weight: bold; margin-bottom: 4pt; color: #5b9bd5; }
+    p { margin: 0 0 8pt 0; }
+    table { border-collapse: collapse; width: 100%; margin: 10pt 0; }
+    td, th { border: 1px solid #c0c0c0; padding: 6pt 8pt; vertical-align: top; }
+    th { background: #f2f5f9; font-weight: bold; color: #1f4e79; }
+    blockquote { border-left: 3pt solid #2e75b6; padding-left: 10pt; margin: 8pt 0; color: #555555; font-style: italic; }
+    hr { border: none; border-top: 1pt solid #d1d5db; margin: 12pt 0; }
+    .word-callout { background: #f0f6ff; border-left: 4pt solid #185abd; padding: 8pt 12pt; margin: 10pt 0; }
+  </style>
+</head>
+<body>
+  ${htmlContent}
+</body>
+</html>`;
+
+async function generateStandardDocx(htmlContent) {
+  if (!window.JSZip) {
+    if (window.htmlDocx && typeof window.htmlDocx.asBlob === 'function') {
+      return window.htmlDocx.asBlob(getWrappedDocxHtml(cleanDocHtml(htmlContent)));
+    }
+    throw new Error('ZIP library not ready');
+  }
+
+  const zip = new window.JSZip();
+  const mediaFiles = [];
+  let imgSeq = 0;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(cleanDocHtml(htmlContent), 'text/html');
+  const body = doc.body;
+
+  const imgEls = Array.from(body.querySelectorAll('img'));
+  for (const img of imgEls) {
+    const src = img.getAttribute('src') || '';
+    if (!src) continue;
+    try {
+      let ext = 'png';
+      let u8 = null;
+      if (src.startsWith('data:image/')) {
+        const match = src.match(/^data:image\/([a-zA-Z0-9+.-]+);base64,(.+)$/);
+        if (match) {
+          ext = match[1].toLowerCase();
+          if (ext === 'jpeg') ext = 'jpg';
+          if (ext === 'svg+xml') ext = 'svg';
+          const b64 = match[2].replace(/\s+/g, '');
+          const binStr = atob(b64);
+          u8 = new Uint8Array(binStr.length);
+          for (let i = 0; i < binStr.length; i++) u8[i] = binStr.charCodeAt(i);
+        }
+      } else if (src.startsWith('http') || src.startsWith('/')) {
+        const res = await fetch(src);
+        if (res.ok) {
+          const buf = await res.arrayBuffer();
+          u8 = new Uint8Array(buf);
+          const cType = res.headers.get('content-type') || '';
+          if (cType.includes('jpeg') || src.includes('.jpg') || src.includes('.jpeg')) ext = 'jpg';
+          else if (cType.includes('gif') || src.includes('.gif')) ext = 'gif';
+          else if (cType.includes('webp') || src.includes('.webp')) ext = 'webp';
+          else ext = 'png';
+        }
+      }
+
+      if (u8) {
+        imgSeq++;
+        const relId = `rIdImg${imgSeq}`;
+        const fileName = `image${imgSeq}.${ext}`;
+        mediaFiles.push({ id: imgSeq, relId, fileName, ext, data: u8 });
+        img.dataset.docxRelId = relId;
+        img.dataset.docxExt = ext;
+      }
+    } catch (e) {
+      console.warn('Failed to embed image:', e);
+    }
+  }
+
+  function getRunPropertiesXml(fmt) {
+    const rPr = [];
+    if (fmt.bold) rPr.push('<w:b/><w:bCs/>');
+    if (fmt.italic) rPr.push('<w:i/><w:iCs/>');
+    if (fmt.underline) rPr.push('<w:u w:val="single"/>');
+    if (fmt.strike) rPr.push('<w:strike/>');
+    if (fmt.sub) rPr.push('<w:vertAlign w:val="subscript"/>');
+    if (fmt.sup) rPr.push('<w:vertAlign w:val="superscript"/>');
+    if (fmt.color) rPr.push(`<w:color w:val="${fmt.color}"/>`);
+    if (fmt.highlight) rPr.push(`<w:highlight w:val="${fmt.highlight}"/>`);
+    if (fmt.code) {
+      rPr.push('<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/>');
+      rPr.push('<w:shd w:val="clear" w:color="auto" w:fill="F1F5F9"/>');
+    }
+    if (fmt.fontFamily) rPr.push(`<w:rFonts w:ascii="${escXml(fmt.fontFamily)}" w:hAnsi="${escXml(fmt.fontFamily)}"/>`);
+    if (fmt.fontSize) rPr.push(`<w:sz w:val="${fmt.fontSize}"/><w:szCs w:val="${fmt.fontSize}"/>`);
+    return rPr.length > 0 ? `<w:rPr>${rPr.join('')}</w:rPr>` : '';
+  }
+
+  function buildDrawingXml(relId, widthPx = 480, heightPx = 320, picId = 1) {
+    const emuPerPx = 9525;
+    const cx = Math.max(95250, Math.round((Number(widthPx) || 480) * emuPerPx));
+    const cy = Math.max(95250, Math.round((Number(heightPx) || 320) * emuPerPx));
+    return `<w:drawing>
+      <wp:inline distT="0" distB="0" distL="0" distR="0">
+        <wp:extent cx="${cx}" cy="${cy}"/>
+        <wp:docPr id="${picId}" name="Picture ${picId}"/>
+        <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+            <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+              <pic:nvPicPr>
+                <pic:cNvPr id="${picId}" name="Picture ${picId}"/>
+                <pic:cNvPicPr/>
+              </pic:nvPicPr>
+              <pic:blipFill>
+                <a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="${relId}"/>
+                <a:stretch><a:fillRect/></a:stretch>
+              </pic:blipFill>
+              <pic:spPr>
+                <a:xfrm>
+                  <a:off x="0" y="0"/>
+                  <a:ext cx="${cx}" cy="${cy}"/>
+                </a:xfrm>
+                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+              </pic:spPr>
+            </pic:pic>
+          </a:graphicData>
+        </a:graphic>
+      </wp:inline>
+    </w:drawing>`;
+  }
+
+  function parseInlineRuns(node, parentFmt = {}) {
+    let xml = '';
+    for (const child of node.childNodes) {
+      if (child.nodeType === 3) {
+        const txt = child.textContent;
+        if (!txt) continue;
+        const rPr = getRunPropertiesXml(parentFmt);
+        xml += `<w:r>${rPr}<w:t xml:space="preserve">${escXml(txt)}</w:t></w:r>`;
+      } else if (child.nodeType === 1) {
+        const tag = child.tagName.toLowerCase();
+        if (tag === 'br') {
+          xml += '<w:r><w:br/></w:r>';
+          continue;
+        }
+        if (tag === 'img') {
+          const relId = child.dataset.docxRelId;
+          if (relId) {
+            const w = child.getAttribute('width') || child.naturalWidth || child.clientWidth || 500;
+            const h = child.getAttribute('height') || child.naturalHeight || child.clientHeight || 350;
+            xml += `<w:r>${buildDrawingXml(relId, w, h, imgSeq)}</w:r>`;
+          }
+          continue;
+        }
+
+        const childFmt = { ...parentFmt };
+        if (['b', 'strong'].includes(tag) || (child.style && child.style.fontWeight === 'bold')) childFmt.bold = true;
+        if (['i', 'em'].includes(tag) || (child.style && child.style.fontStyle === 'italic')) childFmt.italic = true;
+        if (['u'].includes(tag) || (child.style && child.style.textDecoration && child.style.textDecoration.includes('underline'))) childFmt.underline = true;
+        if (['s', 'strike', 'del'].includes(tag) || (child.style && child.style.textDecoration && child.style.textDecoration.includes('line-through'))) childFmt.strike = true;
+        if (tag === 'sub') childFmt.sub = true;
+        if (tag === 'sup') childFmt.sup = true;
+        if (tag === 'code') childFmt.code = true;
+
+        if (child.style && child.style.color) {
+          const hex = colorToHex(child.style.color);
+          if (hex) childFmt.color = hex;
+        }
+        if (child.getAttribute('color')) {
+          const hex = colorToHex(child.getAttribute('color'));
+          if (hex) childFmt.color = hex;
+        }
+        if (child.style && child.style.backgroundColor) {
+          childFmt.highlight = 'yellow';
+        }
+
+        xml += parseInlineRuns(child, childFmt);
+      }
+    }
+    return xml;
+  }
+
+  function getAlignment(el) {
+    if (!el || !el.style) return '';
+    const align = (el.style.textAlign || el.getAttribute('align') || '').toLowerCase();
+    if (align === 'center') return '<w:jc w:val="center"/>';
+    if (align === 'right') return '<w:jc w:val="right"/>';
+    if (align === 'justify') return '<w:jc w:val="both"/>';
+    return '';
+  }
+
+  let bodyXml = '';
+
+  function processBlockNode(node) {
+    if (node.nodeType === 3) {
+      const text = node.textContent.trim();
+      if (text) {
+        bodyXml += `<w:p><w:r><w:t xml:space="preserve">${escXml(text)}</w:t></w:r></w:p>`;
+      }
+      return;
+    }
+    if (node.nodeType !== 1) return;
+
+    const tag = node.tagName.toLowerCase();
+
+    // Headings
+    if (/^h[1-6]$/.test(tag)) {
+      const level = tag[1];
+      const styleId = `Heading${level <= 3 ? level : 3}`;
+      const align = getAlignment(node);
+      const runs = parseInlineRuns(node);
+      bodyXml += `<w:p><w:pPr><w:pStyle w:val="${styleId}"/>${align}</w:pPr>${runs}</w:p>`;
+      return;
+    }
+
+    // Callout / Blockquote
+    if (tag === 'blockquote' || node.classList.contains('word-callout')) {
+      const runs = parseInlineRuns(node);
+      bodyXml += `<w:p><w:pPr><w:pBdr><w:left w:val="single" w:sz="24" w:space="12" w:color="185ABD"/></w:pBdr><w:shd w:val="clear" w:color="auto" w:fill="F0F6FF"/><w:ind w:left="360" w:right="360"/></w:pPr>${runs}</w:p>`;
+      return;
+    }
+
+    // Lists
+    if (tag === 'ul' || tag === 'ol') {
+      const isOrdered = tag === 'ol';
+      const items = Array.from(node.children).filter(c => c.tagName.toLowerCase() === 'li');
+      items.forEach((li, idx) => {
+        const bulletSymbol = isOrdered ? `${idx + 1}.\t` : '•\t';
+        const runs = parseInlineRuns(li);
+        bodyXml += `<w:p><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/></w:rPr><w:t xml:space="preserve">${escXml(bulletSymbol)}</w:t></w:r>${runs}</w:p>`;
+      });
+      return;
+    }
+
+    // Horizontal Rule
+    if (tag === 'hr') {
+      bodyXml += '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="CCCCCC"/></w:pBdr></w:pPr></w:p>';
+      return;
+    }
+
+    // Table
+    if (tag === 'table') {
+      let tblXml = '<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="5000" w:type="pct"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="D3D3D3"/><w:left w:val="single" w:sz="4" w:space="0" w:color="D3D3D3"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="D3D3D3"/><w:right w:val="single" w:sz="4" w:space="0" w:color="D3D3D3"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="E5E5E5"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="E5E5E5"/></w:tblBorders></w:tblPr>';
+      const rows = Array.from(node.querySelectorAll('tr'));
+      for (const row of rows) {
+        tblXml += '<w:tr>';
+        const cells = Array.from(row.querySelectorAll('th, td'));
+        for (const cell of cells) {
+          const isHeader = cell.tagName.toLowerCase() === 'th';
+          const tcShd = isHeader ? '<w:shd w:val="clear" w:color="auto" w:fill="F1F5F9"/>' : '';
+          const tcAlign = getAlignment(cell);
+          const runs = parseInlineRuns(cell, isHeader ? { bold: true } : {});
+          tblXml += `<w:tc><w:tcPr>${tcShd}<w:tcMar><w:top w:w="120" w:type="dxa"/><w:bottom w:w="120" w:type="dxa"/><w:left w:w="160" w:type="dxa"/><w:right w:w="160" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr>${tcAlign}</w:pPr>${runs || '<w:r><w:t></w:t></w:r>'}</w:p></w:tc>`;
+        }
+        tblXml += '</w:tr>';
+      }
+      tblXml += '</w:tbl>';
+      bodyXml += tblXml;
+      return;
+    }
+
+    // Standalone Image
+    if (tag === 'img') {
+      const relId = node.dataset.docxRelId;
+      if (relId) {
+        const w = node.getAttribute('width') || node.naturalWidth || node.clientWidth || 500;
+        const h = node.getAttribute('height') || node.naturalHeight || node.clientHeight || 350;
+        bodyXml += `<w:p><w:r>${buildDrawingXml(relId, w, h, imgSeq)}</w:r></w:p>`;
+      }
+      return;
+    }
+
+    // Paragraph or generic block
+    const align = getAlignment(node);
+    const runs = parseInlineRuns(node);
+    if (runs || align) {
+      bodyXml += `<w:p><w:pPr>${align}</w:pPr>${runs}</w:p>`;
+    } else {
+      Array.from(node.childNodes).forEach(processBlockNode);
+    }
+  }
+
+  Array.from(body.childNodes).forEach(processBlockNode);
+
+  if (!bodyXml) {
+    bodyXml = '<w:p><w:r><w:t></w:t></w:r></w:p>';
+  }
+
+  const sectPr = `<w:sectPr>
+    <w:pgSz w:w="12240" w:h="15840"/>
+    <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>
+    <w:cols w:space="720"/>
+    <w:docGrid w:linePitch="360"/>
+  </w:sectPr>`;
+
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+            xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+  <w:body>
+    ${bodyXml}
+    ${sectPr}
+  </w:body>
+</w:document>`;
+
+  let docRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>`;
+  for (const media of mediaFiles) {
+    docRelsXml += `\n  <Relationship Id="${media.relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${media.fileName}"/>`;
+  }
+  docRelsXml += '\n</Relationships>';
+
+  const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
+  <Default Extension="jpeg" ContentType="image/jpeg"/>
+  <Default Extension="jpg" ContentType="image/jpeg"/>
+  <Default Extension="gif" ContentType="image/gif"/>
+  <Default Extension="webp" ContentType="image/webp"/>
+  <Default Extension="svg" ContentType="image/svg+xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`;
+
+  const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+          xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:docDefaults>
+    <w:rPrDefault>
+      <w:rPr>
+        <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/>
+        <w:sz w:val="22"/>
+        <w:szCs w:val="22"/>
+        <w:lang w:val="en-US"/>
+      </w:rPr>
+    </w:rPrDefault>
+    <w:pPrDefault>
+      <w:pPr>
+        <w:spacing w:line="276" w:lineRule="auto" w:after="160"/>
+      </w:pPr>
+    </w:pPrDefault>
+  </w:docDefaults>
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
+    <w:name w:val="Normal"/>
+    <w:qFormat/>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1">
+    <w:name w:val="heading 1"/>
+    <w:basedOn w:val="Normal"/>
+    <w:next w:val="Normal"/>
+    <w:qFormat/>
+    <w:pPr>
+      <w:keepNext/>
+      <w:spacing w:before="360" w:after="120"/>
+    </w:pPr>
+    <w:rPr>
+      <w:rFonts w:ascii="Calibri Light" w:hAnsi="Calibri Light"/>
+      <w:b/>
+      <w:color w:val="1F4E79"/>
+      <w:sz w:val="32"/>
+      <w:szCs w:val="32"/>
+    </w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2">
+    <w:name w:val="heading 2"/>
+    <w:basedOn w:val="Normal"/>
+    <w:next w:val="Normal"/>
+    <w:qFormat/>
+    <w:pPr>
+      <w:keepNext/>
+      <w:spacing w:before="240" w:after="80"/>
+    </w:pPr>
+    <w:rPr>
+      <w:rFonts w:ascii="Calibri Light" w:hAnsi="Calibri Light"/>
+      <w:b/>
+      <w:color w:val="2E75B6"/>
+      <w:sz w:val="26"/>
+      <w:szCs w:val="26"/>
+    </w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading3">
+    <w:name w:val="heading 3"/>
+    <w:basedOn w:val="Normal"/>
+    <w:next w:val="Normal"/>
+    <w:qFormat/>
+    <w:pPr>
+      <w:keepNext/>
+      <w:spacing w:before="160" w:after="60"/>
+    </w:pPr>
+    <w:rPr>
+      <w:rFonts w:ascii="Calibri Light" w:hAnsi="Calibri Light"/>
+      <w:b/>
+      <w:color w:val="5B9BD5"/>
+      <w:sz w:val="24"/>
+      <w:szCs w:val="24"/>
+    </w:rPr>
+  </w:style>
+  <w:style w:type="table" w:default="1" w:styleId="TableGrid">
+    <w:name w:val="Table Grid"/>
+    <w:tblPr>
+      <w:tblBorders>
+        <w:top w:val="single" w:sz="4" w:space="0" w:color="D3D3D3"/>
+        <w:left w:val="single" w:sz="4" w:space="0" w:color="D3D3D3"/>
+        <w:bottom w:val="single" w:sz="4" w:space="0" w:color="D3D3D3"/>
+        <w:right w:val="single" w:sz="4" w:space="0" w:color="D3D3D3"/>
+        <w:insideH w:val="single" w:sz="4" w:space="0" w:color="E5E5E5"/>
+        <w:insideV w:val="single" w:sz="4" w:space="0" w:color="E5E5E5"/>
+      </w:tblBorders>
+    </w:tblPr>
+  </w:style>
+</w:styles>`;
+
+  zip.file('_rels/.rels', rootRelsXml);
+  zip.file('[Content_Types].xml', contentTypesXml);
+  zip.file('word/_rels/document.xml.rels', docRelsXml);
+  zip.file('word/styles.xml', stylesXml);
+  zip.file('word/document.xml', documentXml);
+
+  for (const media of mediaFiles) {
+    zip.file(`word/media/${media.fileName}`, media.data);
+  }
+
+  return await zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 }
+  });
+}
+
+async function readDocFile(arrayBuffer, fileName = '') {
+  const u8 = new Uint8Array(arrayBuffer);
+  const isZip = u8[0] === 0x50 && u8[1] === 0x4b;
+
+  if (isZip) {
+    if (window.JSZip) {
+      try {
+        const zip = await window.JSZip.loadAsync(arrayBuffer);
+        const mhtPath = Object.keys(zip.files).find(p => /(?:afchunk|altchunk|\.mht$)/i.test(p));
+        if (mhtPath) {
+          const mhtStr = await zip.files[mhtPath].async('string');
+          const parsed = parseMhtml(mhtStr);
+          if (parsed && parsed.trim().length > 0) {
+            return { type: 'html', html: cleanDocHtml(parsed), source: 'mhtml-chunk' };
+          }
+        }
+
+        const docXmlEntry = zip.files['word/document.xml'];
+        if (docXmlEntry) {
+          const docXml = await docXmlEntry.async('string');
+          if (docXml.includes('w:altChunk') && !docXml.includes('<w:p>') && !docXml.includes('<w:p ')) {
+            for (const path of Object.keys(zip.files)) {
+              if (path.startsWith('word/') && (path.endsWith('.mht') || path.endsWith('.htm') || path.endsWith('.html'))) {
+                const chunkStr = await zip.files[path].async('string');
+                const html = parseMhtml(chunkStr) || chunkStr;
+                if (html && html.trim().length > 0) {
+                  return { type: 'html', html: cleanDocHtml(html), source: 'altchunk-file' };
+                }
+              }
+            }
+          }
+        }
+      } catch (zipErr) {
+        console.warn('JSZip reading error:', zipErr);
+      }
+    }
+
+    if (window.mammoth && typeof window.mammoth.convertToHtml === 'function') {
+      try {
+        const res = await window.mammoth.convertToHtml({ arrayBuffer });
+        if (res && res.value && res.value.trim().length > 0) {
+          return { type: 'openxml', html: cleanDocHtml(res.value), rawBuffer: arrayBuffer, source: 'mammoth' };
+        }
+      } catch (mammothErr) {
+        console.warn('Mammoth conversion error:', mammothErr);
+      }
+    }
+
+    return { type: 'openxml', html: '', rawBuffer: arrayBuffer, source: 'openxml-zip' };
+  }
+
+  let text = '';
+  try {
+    text = new TextDecoder('utf-8', { fatal: false }).decode(u8);
+  } catch {}
+
+  if (text && (text.includes('MIME-Version:') || text.includes('mhtDocumentPart') || text.includes('multipart/related'))) {
+    const parsed = cleanDocHtml(text);
+    if (parsed && parsed.trim().length > 0) {
+      return { type: 'html', html: parsed, source: 'raw-mhtml' };
+    }
+  }
+
+  const textRuns = extractDocStrings(u8);
+  const cleanRuns = textRuns.filter(r => {
+    if (/^MIME-Version:/i.test(r)) return false;
+    if (/^------=mhtDocumentPart/i.test(r)) return false;
+    if (/^Content-(?:Type|Transfer-Encoding|Location):/i.test(r)) return false;
+    if (/^[A-Za-z0-9+/=]{40,}$/.test(r)) return false;
+    return true;
+  });
+
+  return {
+    type: 'legacy',
+    textRuns: cleanRuns,
+    html: cleanRuns.map(p => `<p>${esc(p)}</p>`).join(''),
+    source: 'legacy-doc'
+  };
+}
+
+/* ---------- Word Document (.docx) Editor ---------- */
+async function openDocEditor(existing = null, initialHtml = '') {
+  const folder = state.path;
+  const isLegacyDoc = existing && ext(existing) === 'doc';
+  let defaultName = existing || 'Document.docx';
+  if (isLegacyDoc) defaultName = defaultName.replace(/\.doc$/i, '.docx');
+
+  let currentZoom = 100;
+  let isFullscreen = false;
+  let isDirty = false;
+  let cleanupListeners = null;
+
+  const m = modal({
+    wide: true,
+    extraClass: 'ms-word-modal',
+    noHead: true,
+    onClose: () => cleanupListeners?.(),
+    body: `
+      <div class="ms-word-app">
+        <!-- Word Title Bar -->
+        <div class="word-titlebar">
+          <div class="word-titlebar-left">
+            <div class="word-app-badge" title="Microsoft Word (.docx)">
+              ${icon('word')}
+              <span class="word-brand-name">Word</span>
+            </div>
+            <div class="word-filename-wrap">
+              <input class="word-filename-input doc-editor-name" type="text" value="${esc(defaultName)}" placeholder="Document.docx" spellcheck="false" title="Click to rename document">
+              <span class="word-status-pill" id="wordSaveStatus" title="Save status">
+                ${icon('check')} <span>Saved</span>
+              </span>
+            </div>
+          </div>
+          <div class="word-titlebar-center">
+            <div class="word-quick-tools">
+              <button class="word-quick-btn" data-cmd="undo" title="Undo (Ctrl+Z)">${icon('undo')}</button>
+              <button class="word-quick-btn" data-cmd="redo" title="Redo (Ctrl+Y)">${icon('redo')}</button>
+              <button class="word-quick-btn" data-act="quick-save" title="Save Document (Ctrl+S)">${icon('save')}</button>
+            </div>
+          </div>
+          <div class="word-titlebar-right">
+            <button class="word-action-btn" data-act="download" title="Export .docx to your device">${icon('download')} <span>Download</span></button>
+            <button class="word-action-btn primary" data-save title="Save to Pocket Code (Ctrl+S)">${icon('save')} <span>Save</span></button>
+            <button class="word-titlebar-icon-btn" data-act="fullscreen" title="Toggle Fullscreen">${icon('maximize')}</button>
+            <button class="word-titlebar-icon-btn close-btn" data-cancel title="Close">${icon('close')}</button>
+          </div>
+        </div>
+
+        <!-- Ribbon Tabs Bar -->
+        <div class="word-ribbon-tabs">
+          <div class="word-tabs-list">
+            <button class="word-tab-btn active" data-tab="home">Home</button>
+            <button class="word-tab-btn" data-tab="insert">Insert</button>
+            <button class="word-tab-btn" data-tab="layout">Layout</button>
+            <button class="word-tab-btn" data-tab="view">View</button>
+          </div>
+        </div>
+
+        <!-- Ribbon Panels -->
+        <div class="word-ribbon-panel">
+          <!-- HOME TAB -->
+          <div class="word-ribbon-content active" id="tab-home">
+            <div class="word-ribbon-group">
+              <div class="word-group-row">
+                <button class="word-tool-btn" data-cmd="undo" title="Undo (Ctrl+Z)">${icon('undo')}</button>
+                <button class="word-tool-btn" data-cmd="redo" title="Redo (Ctrl+Y)">${icon('redo')}</button>
+              </div>
+              <div class="word-group-label">Undo</div>
+            </div>
+            <div class="word-ribbon-divider"></div>
+
+            <div class="word-ribbon-group">
+              <div class="word-group-row">
+                <select class="word-select word-font-family" data-act="fontFamily" title="Font Family">
+                  <option value="Calibri" selected>Calibri</option>
+                  <option value="Carlito">Carlito</option>
+                  <option value="Aptos">Aptos</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Times New Roman">Times New Roman</option>
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="JetBrains Mono">JetBrains Mono</option>
+                </select>
+                <select class="word-select word-font-size" data-act="fontSize" title="Font Size">
+                  <option value="8pt">8</option>
+                  <option value="9pt">9</option>
+                  <option value="10pt">10</option>
+                  <option value="11pt" selected>11</option>
+                  <option value="12pt">12</option>
+                  <option value="14pt">14</option>
+                  <option value="16pt">16</option>
+                  <option value="18pt">18</option>
+                  <option value="20pt">20</option>
+                  <option value="24pt">24</option>
+                  <option value="28pt">28</option>
+                  <option value="36pt">36</option>
+                  <option value="48pt">48</option>
+                </select>
+                <button class="word-tool-btn font-stepper" data-act="growFont" title="Increase Font Size">A<span class="stepper-arrow">▲</span></button>
+                <button class="word-tool-btn font-stepper" data-act="shrinkFont" title="Decrease Font Size">A<span class="stepper-arrow">▼</span></button>
+                <div class="word-mini-divider"></div>
+                <button class="word-tool-btn" data-cmd="removeFormat" title="Clear Formatting">${icon('clear')}</button>
+              </div>
+              <div class="word-group-row">
+                <button class="word-tool-btn check-state" data-cmd="bold" title="Bold (Ctrl+B)">${icon('bold')}</button>
+                <button class="word-tool-btn check-state" data-cmd="italic" title="Italic (Ctrl+I)">${icon('italic')}</button>
+                <button class="word-tool-btn check-state" data-cmd="underline" title="Underline (Ctrl+U)">${icon('underline')}</button>
+                <button class="word-tool-btn check-state" data-cmd="strikeThrough" title="Strikethrough">${icon('strikethrough')}</button>
+                <button class="word-tool-btn check-state" data-cmd="subscript" title="Subscript">${icon('subscript')}</button>
+                <button class="word-tool-btn check-state" data-cmd="superscript" title="Superscript">${icon('superscript')}</button>
+                <div class="word-mini-divider"></div>
+                <div class="word-dropdown-wrap">
+                  <button class="word-tool-btn word-color-btn" data-dropdown="textColor" title="Font Color">
+                    ${icon('textColor')}
+                  </button>
+                  <div class="word-popover word-palette" id="popover-textColor" hidden>
+                    <div class="palette-header">Font Color</div>
+                    <div class="palette-grid">
+                      <button class="color-dot" data-color="#111827" style="background:#111827" title="Automatic / Black"></button>
+                      <button class="color-dot" data-color="#185abd" style="background:#185abd" title="Word Blue"></button>
+                      <button class="color-dot" data-color="#1f4e79" style="background:#1f4e79" title="Dark Navy"></button>
+                      <button class="color-dot" data-color="#dc2626" style="background:#dc2626" title="Dark Red"></button>
+                      <button class="color-dot" data-color="#ea580c" style="background:#ea580c" title="Orange"></button>
+                      <button class="color-dot" data-color="#16a34a" style="background:#16a34a" title="Green"></button>
+                      <button class="color-dot" data-color="#7c3aed" style="background:#7c3aed" title="Purple"></button>
+                      <button class="color-dot" data-color="#4b5563" style="background:#4b5563" title="Gray"></button>
+                    </div>
+                    <div class="palette-custom">
+                      <label>Custom: <input type="color" id="customTextColor" value="#185abd"></label>
+                    </div>
+                  </div>
+                </div>
+                <div class="word-dropdown-wrap">
+                  <button class="word-tool-btn word-color-btn" data-dropdown="hiliteColor" title="Text Highlight Color">
+                    ${icon('highlighter')}
+                  </button>
+                  <div class="word-popover word-palette" id="popover-hiliteColor" hidden>
+                    <div class="palette-header">Highlight Color</div>
+                    <div class="palette-grid">
+                      <button class="color-dot" data-hilite="#fef08a" style="background:#fef08a" title="Yellow"></button>
+                      <button class="color-dot" data-hilite="#bbf7d0" style="background:#bbf7d0" title="Bright Green"></button>
+                      <button class="color-dot" data-hilite="#a5f3fc" style="background:#a5f3fc" title="Turquoise"></button>
+                      <button class="color-dot" data-hilite="#fbcfe8" style="background:#fbcfe8" title="Pink"></button>
+                      <button class="color-dot" data-hilite="#fed7aa" style="background:#fed7aa" title="Orange"></button>
+                      <button class="color-dot" data-hilite="#e5e7eb" style="background:#e5e7eb" title="Gray"></button>
+                      <button class="color-dot dot-clear" data-hilite="transparent" title="No Color">∅</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="word-group-label">Font</div>
+            </div>
+            <div class="word-ribbon-divider"></div>
+
+            <div class="word-ribbon-group">
+              <div class="word-group-row">
+                <button class="word-tool-btn check-state" data-cmd="insertUnorderedList" title="Bullets">${icon('listUl')}</button>
+                <button class="word-tool-btn check-state" data-cmd="insertOrderedList" title="Numbering">${icon('listOl')}</button>
+                <button class="word-tool-btn" data-cmd="outdent" title="Decrease Indent">${icon('outdent')}</button>
+                <button class="word-tool-btn" data-cmd="indent" title="Increase Indent">${icon('indent')}</button>
+                <div class="word-mini-divider"></div>
+                <select class="word-select word-line-height" data-act="lineSpacing" title="Line Spacing">
+                  <option value="1.0">1.0</option>
+                  <option value="1.15">1.15</option>
+                  <option value="1.5" selected>1.5</option>
+                  <option value="2.0">2.0</option>
+                </select>
+              </div>
+              <div class="word-group-row">
+                <button class="word-tool-btn check-state" data-cmd="justifyLeft" title="Align Left">${icon('alignLeft')}</button>
+                <button class="word-tool-btn check-state" data-cmd="justifyCenter" title="Center">${icon('alignCenter')}</button>
+                <button class="word-tool-btn check-state" data-cmd="justifyRight" title="Align Right">${icon('alignRight')}</button>
+                <button class="word-tool-btn check-state" data-cmd="justifyFull" title="Justify">${icon('alignJustify')}</button>
+                <div class="word-mini-divider"></div>
+                <button class="word-tool-btn" data-act="insertChecklist" title="Checklist item">☑</button>
+                <button class="word-tool-btn" data-act="insertQuote" title="Quote block">${icon('quote')}</button>
+              </div>
+              <div class="word-group-label">Paragraph</div>
+            </div>
+            <div class="word-ribbon-divider"></div>
+
+            <!-- MS Word Quick Styles Gallery -->
+            <div class="word-ribbon-group word-styles-box">
+              <div class="word-styles-gallery">
+                <button class="word-style-card active" data-style="p" title="Normal text">
+                  <span class="style-preview">AaBbCc</span>
+                  <span class="style-name">Normal</span>
+                </button>
+                <button class="word-style-card" data-style="h1" title="Heading 1">
+                  <span class="style-preview h1">AaBbCc</span>
+                  <span class="style-name">Heading 1</span>
+                </button>
+                <button class="word-style-card" data-style="h2" title="Heading 2">
+                  <span class="style-preview h2">AaBbCc</span>
+                  <span class="style-name">Heading 2</span>
+                </button>
+                <button class="word-style-card" data-style="h3" title="Heading 3">
+                  <span class="style-preview h3">AaBbCc</span>
+                  <span class="style-name">Heading 3</span>
+                </button>
+                <button class="word-style-card" data-style="blockquote" title="Quote">
+                  <span class="style-preview quote">“Quote”</span>
+                  <span class="style-name">Quote</span>
+                </button>
+              </div>
+              <div class="word-group-label">Styles</div>
+            </div>
+          </div>
+
+          <!-- INSERT TAB -->
+          <div class="word-ribbon-content" id="tab-insert" hidden>
+            <div class="word-ribbon-group">
+              <div class="word-group-row">
+                <button class="word-large-btn" data-act="insertTable3x3" title="Insert 3x3 Table">
+                  ${icon('table')}
+                  <span>Table 3×3</span>
+                </button>
+                <button class="word-large-btn" data-act="insertTable4x4" title="Insert 4x4 Table">
+                  ${icon('table')}
+                  <span>Table 4×4</span>
+                </button>
+                <div class="word-mini-divider"></div>
+                <div class="word-subgroup-col">
+                  <button class="word-small-row-btn" data-act="tableAddRow" title="Add row to active table">+ Row Below</button>
+                  <button class="word-small-row-btn" data-act="tableAddCol" title="Add column to active table">+ Column Right</button>
+                </div>
+                <div class="word-subgroup-col">
+                  <button class="word-small-row-btn danger" data-act="tableDelRow" title="Delete current row">− Delete Row</button>
+                  <button class="word-small-row-btn danger" data-act="tableDelCol" title="Delete current column">− Delete Column</button>
+                </div>
+              </div>
+              <div class="word-group-label">Tables</div>
+            </div>
+            <div class="word-ribbon-divider"></div>
+
+            <div class="word-ribbon-group">
+              <div class="word-group-row">
+                <button class="word-large-btn" data-act="insertLink" title="Insert Web Link">
+                  ${icon('link')}
+                  <span>Link</span>
+                </button>
+                <button class="word-large-btn" data-act="insertDivider" title="Insert Horizontal Rule">
+                  ${icon('horizontalRule')}
+                  <span>Divider</span>
+                </button>
+                <button class="word-large-btn" data-act="insertCallout" title="Insert Callout Note">
+                  ${icon('callout')}
+                  <span>Callout Note</span>
+                </button>
+                <button class="word-large-btn" data-act="insertDate" title="Insert Current Date">
+                  ${icon('calendar')}
+                  <span>Date &amp; Time</span>
+                </button>
+              </div>
+              <div class="word-group-label">Elements</div>
+            </div>
+            <div class="word-ribbon-divider"></div>
+
+            <div class="word-ribbon-group">
+              <div class="word-symbols-grid">
+                <button class="word-symbol-btn" data-sym="©" title="Copyright">©</button>
+                <button class="word-symbol-btn" data-sym="®" title="Registered">®</button>
+                <button class="word-symbol-btn" data-sym="™" title="Trademark">™</button>
+                <button class="word-symbol-btn" data-sym="•" title="Bullet">•</button>
+                <button class="word-symbol-btn" data-sym="—" title="Em Dash">—</button>
+                <button class="word-symbol-btn" data-sym="→" title="Right Arrow">→</button>
+                <button class="word-symbol-btn" data-sym="±" title="Plus-Minus">±</button>
+                <button class="word-symbol-btn" data-sym="✓" title="Checkmark">✓</button>
+                <button class="word-symbol-btn" data-sym="★" title="Star">★</button>
+                <button class="word-symbol-btn" data-sym="℃" title="Celsius">℃</button>
+              </div>
+              <div class="word-group-label">Symbols</div>
+            </div>
+          </div>
+
+          <!-- LAYOUT TAB -->
+          <div class="word-ribbon-content" id="tab-layout" hidden>
+            <div class="word-ribbon-group">
+              <div class="word-group-row">
+                <button class="word-large-btn active-margin" data-act="setMargin" data-val="normal" title="1 inch margins">
+                  ${icon('margins')}
+                  <span>Normal (1")</span>
+                </button>
+                <button class="word-large-btn active-margin" data-act="setMargin" data-val="narrow" title="0.5 inch margins">
+                  ${icon('marginsNarrow')}
+                  <span>Narrow (0.5")</span>
+                </button>
+                <button class="word-large-btn active-margin" data-act="setMargin" data-val="wide" title="1.5 inch margins">
+                  ${icon('marginsWide')}
+                  <span>Wide (1.5")</span>
+                </button>
+              </div>
+              <div class="word-group-label">Margins</div>
+            </div>
+            <div class="word-ribbon-divider"></div>
+
+            <div class="word-ribbon-group">
+              <div class="word-group-row">
+                <button class="word-large-btn active-width" data-act="setWidth" data-val="standard" title="Standard A4 / Letter width">
+                  ${icon('pageLayout')}
+                  <span>Standard A4</span>
+                </button>
+                <button class="word-large-btn active-width" data-act="setWidth" data-val="wide" title="Full workspace width">
+                  ${icon('fullScreen')}
+                  <span>Full Width</span>
+                </button>
+              </div>
+              <div class="word-group-label">Page Width</div>
+            </div>
+          </div>
+
+          <!-- VIEW TAB -->
+          <div class="word-ribbon-content" id="tab-view" hidden>
+            <div class="word-ribbon-group">
+              <div class="word-group-row" style="padding: 10px 4px; gap: 16px;">
+                <label class="word-toggle-label">
+                  <input type="checkbox" id="toggleRulerCheck" checked>
+                  <span>Horizontal Ruler</span>
+                </label>
+                <label class="word-toggle-label">
+                  <input type="checkbox" id="toggleShadowCheck" checked>
+                  <span>Page Drop Shadow</span>
+                </label>
+              </div>
+              <div class="word-group-label">Show / Hide</div>
+            </div>
+            <div class="word-ribbon-divider"></div>
+
+            <div class="word-ribbon-group">
+              <div class="word-group-row" style="padding: 10px 4px; gap: 8px;">
+                <button class="word-tool-btn" data-act="zoomOut" title="Zoom Out">${icon('zoomOut')}</button>
+                <span class="word-zoom-readout" id="viewZoomText">100%</span>
+                <button class="word-tool-btn" data-act="zoomIn" title="Zoom In">${icon('zoomIn')}</button>
+                <button class="word-small-row-btn" data-act="zoomReset" title="Reset Zoom to 100%">Reset 100%</button>
+              </div>
+              <div class="word-group-label">Zoom</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MS Word Horizontal Ruler -->
+        <div class="word-ruler-bar" id="wordRulerBar">
+          <div class="word-ruler-track" id="wordRulerTrack">
+            <div class="word-ruler-margin-left">
+              <div class="word-ruler-marker top-indent" title="First Line Indent"></div>
+              <div class="word-ruler-marker hanging-indent" title="Left Indent"></div>
+            </div>
+            <div class="word-ruler-body">
+              <span class="ruler-inch" style="left:0%"><span class="ruler-num">1</span></span>
+              <span class="ruler-inch" style="left:14.28%"><span class="ruler-num">2</span></span>
+              <span class="ruler-inch" style="left:28.57%"><span class="ruler-num">3</span></span>
+              <span class="ruler-inch" style="left:42.85%"><span class="ruler-num">4</span></span>
+              <span class="ruler-inch" style="left:57.14%"><span class="ruler-num">5</span></span>
+              <span class="ruler-inch" style="left:71.42%"><span class="ruler-num">6</span></span>
+              <span class="ruler-inch" style="left:85.71%"><span class="ruler-num">7</span></span>
+              <span class="ruler-inch" style="left:100%"><span class="ruler-num">8</span></span>
+            </div>
+            <div class="word-ruler-margin-right">
+              <div class="word-ruler-marker right-margin" title="Right Margin"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Document Canvas & Word Paper -->
+        <div class="word-canvas-scroll doc-editor-scroll">
+          <div class="word-paper-container" id="wordPaperContainer">
+            <div class="doc-editor-paper word-paper" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true">
+              <div class="spin">Loading document…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MS Word Status Bar -->
+        <div class="word-statusbar">
+          <div class="word-statusbar-left">
+            <span class="word-status-item" id="wordPageStat">Page 1 of 1</span>
+            <span class="word-status-sep">|</span>
+            <span class="word-status-item doc-stats" id="wordWordStat">0 words · 0 characters</span>
+            <span class="word-status-sep">|</span>
+            <span class="word-status-item">English (US)</span>
+            <span class="word-status-sep">|</span>
+            <span class="word-status-item" title="Proofing">${icon('check')} <span style="margin-left:2px">No errors</span></span>
+          </div>
+          <div class="word-statusbar-center">
+            <span class="word-status-item" id="wordStatusDetail">Pocket Code Word Editor</span>
+          </div>
+          <div class="word-statusbar-right">
+            <span class="word-view-icon active" title="Print Layout View">${icon('pageLayout')}</span>
+            <div class="word-zoom-box">
+              <button class="word-zoom-step" data-act="zoomOut" title="Zoom Out">−</button>
+              <span class="word-zoom-num" id="statusZoomNum">100%</span>
+              <button class="word-zoom-step" data-act="zoomIn" title="Zoom In">+</button>
+            </div>
+          </div>
+        </div>
+      </div>`,
+  });
+
+  const paper = $('.doc-editor-paper', m.el);
+  const nameIn = $('.doc-editor-name', m.el);
+
+  // Enable CSS styling for commands where available
+  try { document.execCommand('styleWithCSS', false, true); } catch {}
+
+  const updateStats = () => {
+    const text = paper.innerText || '';
+    const words = (text.trim().match(/\S+/g) || []).length;
+    const chars = text.length;
+    const estPages = Math.max(1, Math.ceil(words / 450));
+    const pStat = $('#wordPageStat', m.el);
+    const wStat = $('#wordWordStat', m.el);
+    if (pStat) pStat.textContent = `Page 1 of ${estPages}`;
+    if (wStat) wStat.textContent = `${plural(words, 'word')} · ${plural(chars, 'character')}`;
+  };
+
+  const markDirty = () => {
+    if (!isDirty) {
+      isDirty = true;
+      const st = $('#wordSaveStatus', m.el);
+      if (st) {
+        st.className = 'word-status-pill dirty';
+        st.innerHTML = '● <span>Unsaved changes</span>';
+      }
+    }
+    updateStats();
+  };
+  paper.addEventListener('input', markDirty);
+
+  // Synchronize ribbon active buttons with current selection
+  const syncActiveStates = () => {
+    m.el.querySelectorAll('.check-state[data-cmd]').forEach(btn => {
+      const cmd = btn.dataset.cmd;
+      try {
+        const active = document.queryCommandState(cmd);
+        btn.classList.toggle('active', !!active);
+      } catch {}
+    });
+
+    const alignCommands = ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'];
+    alignCommands.forEach(cmd => {
+      const btn = $(`[data-cmd="${cmd}"]`, m.el);
+      if (btn) {
+        try {
+          btn.classList.toggle('active', !!document.queryCommandState(cmd));
+        } catch {}
+      }
+    });
+
+    // Sync styles cards
+    let parentBlock = 'p';
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      let node = sel.getRangeAt(0).startContainer;
+      if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+      while (node && node !== paper) {
+        const tag = node.tagName?.toLowerCase();
+        if (['h1', 'h2', 'h3', 'blockquote', 'p'].includes(tag)) {
+          parentBlock = tag;
+          break;
+        }
+        node = node.parentNode;
+      }
+    }
+    m.el.querySelectorAll('.word-style-card').forEach(card => {
+      card.classList.toggle('active', card.dataset.style === parentBlock);
+    });
+  };
+
+  const onSelectionChange = () => {
+    if (document.activeElement === paper || paper.contains(document.activeElement)) {
+      syncActiveStates();
+    }
+  };
+  document.addEventListener('selectionchange', onSelectionChange);
+  paper.addEventListener('keyup', syncActiveStates);
+  paper.addEventListener('mouseup', syncActiveStates);
+
+  // Ribbon Tab switching
+  m.el.querySelectorAll('.word-tab-btn').forEach(tab => {
+    tab.onclick = () => {
+      m.el.querySelectorAll('.word-tab-btn').forEach(t => t.classList.remove('active'));
+      m.el.querySelectorAll('.word-ribbon-content').forEach(p => { p.hidden = true; p.classList.remove('active'); });
+      tab.classList.add('active');
+      const panel = $(`#tab-${tab.dataset.tab}`, m.el);
+      if (panel) {
+        panel.hidden = false;
+        panel.classList.add('active');
+      }
+    };
+  });
+
+  // Standard commands
+  m.el.querySelectorAll('[data-cmd]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.execCommand(btn.dataset.cmd, false, null);
+      paper.focus();
+      markDirty();
+      syncActiveStates();
+    });
+  });
+
+  // Styles gallery
+  m.el.querySelectorAll('.word-style-card').forEach(card => {
+    card.onclick = (e) => {
+      e.preventDefault();
+      const style = card.dataset.style;
+      document.execCommand('formatBlock', false, `<${style}>`);
+      paper.focus();
+      markDirty();
+      syncActiveStates();
+    };
+  });
+
+  // Font family selector
+  const fontSelect = $('.word-font-family', m.el);
+  if (fontSelect) {
+    fontSelect.onchange = () => {
+      document.execCommand('fontName', false, fontSelect.value);
+      paper.focus();
+      markDirty();
+    };
+  }
+
+  // Font size selector & steppers
+  const setFontSize = (sizeStr) => {
+    document.execCommand('fontSize', false, '7');
+    const fonts = paper.querySelectorAll('font[size="7"]');
+    fonts.forEach(f => {
+      f.removeAttribute('size');
+      f.style.fontSize = sizeStr;
+    });
+    paper.focus();
+    markDirty();
+  };
+
+  const sizeSelect = $('.word-font-size', m.el);
+  if (sizeSelect) {
+    sizeSelect.onchange = () => setFontSize(sizeSelect.value);
+  }
+
+  const FONT_SIZES = ['8pt', '9pt', '10pt', '11pt', '12pt', '14pt', '16pt', '18pt', '20pt', '24pt', '28pt', '36pt', '48pt'];
+  const stepFont = (delta) => {
+    let curIdx = FONT_SIZES.indexOf(sizeSelect.value);
+    if (curIdx === -1) curIdx = 3;
+    const nextIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, curIdx + delta));
+    sizeSelect.value = FONT_SIZES[nextIdx];
+    setFontSize(FONT_SIZES[nextIdx]);
+  };
+  $('[data-act="growFont"]', m.el).onclick = () => stepFont(1);
+  $('[data-act="shrinkFont"]', m.el).onclick = () => stepFont(-1);
+
+  // Line spacing
+  const lineSelect = $('.word-line-height', m.el);
+  if (lineSelect) {
+    lineSelect.onchange = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount) {
+        let node = sel.getRangeAt(0).startContainer;
+        if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+        while (node && node !== paper) {
+          if (['P', 'H1', 'H2', 'H3', 'BLOCKQUOTE', 'LI'].includes(node.tagName)) {
+            node.style.lineHeight = lineSelect.value;
+            break;
+          }
+          node = node.parentNode;
+        }
+      }
+      paper.focus();
+      markDirty();
+    };
+  }
+
+  // Color Dropdowns (Font Color & Highlight Color)
+  m.el.querySelectorAll('[data-dropdown]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const name = btn.dataset.dropdown;
+      const pop = $(`#popover-${name}`, m.el);
+      const wasHidden = pop.hidden;
+      m.el.querySelectorAll('.word-popover').forEach(p => p.hidden = true);
+      pop.hidden = !wasHidden;
+    };
+  });
+
+  m.el.querySelectorAll('[data-color]').forEach(dot => {
+    dot.onclick = () => {
+      document.execCommand('foreColor', false, dot.dataset.color);
+      $('#popover-textColor', m.el).hidden = true;
+      paper.focus();
+      markDirty();
+    };
+  });
+
+  const customColorInput = $('#customTextColor', m.el);
+  if (customColorInput) {
+    customColorInput.onchange = () => {
+      document.execCommand('foreColor', false, customColorInput.value);
+      $('#popover-textColor', m.el).hidden = true;
+      paper.focus();
+      markDirty();
+    };
+  }
+
+  m.el.querySelectorAll('[data-hilite]').forEach(dot => {
+    dot.onclick = () => {
+      const color = dot.dataset.hilite;
+      if (color === 'transparent') {
+        document.execCommand('removeFormat', false, null);
+      } else {
+        document.execCommand('hiliteColor', false, color);
+      }
+      $('#popover-hiliteColor', m.el).hidden = true;
+      paper.focus();
+      markDirty();
+    };
+  });
+
+  const hidePopovers = () => m.el.querySelectorAll('.word-popover').forEach(p => p.hidden = true);
+  document.addEventListener('click', hidePopovers);
+
+  // Insert Tab Actions: Tables
+  const createTableHtml = (rows, cols) => {
+    let h = '<table class="word-table"><thead><tr>';
+    for (let c = 1; c <= cols; c++) h += `<th>Header ${c}</th>`;
+    h += '</tr></thead><tbody>';
+    for (let r = 1; r < rows; r++) {
+      h += '<tr>';
+      for (let c = 1; c <= cols; c++) h += `<td>Row ${r} Col ${c}</td>`;
+      h += '</tr>';
+    }
+    h += '</tbody></table><p><br></p>';
+    return h;
+  };
+
+  $('[data-act="insertTable3x3"]', m.el).onclick = () => {
+    document.execCommand('insertHTML', false, createTableHtml(3, 3));
+    paper.focus();
+    markDirty();
+  };
+  $('[data-act="insertTable4x4"]', m.el).onclick = () => {
+    document.execCommand('insertHTML', false, createTableHtml(4, 4));
+    paper.focus();
+    markDirty();
+  };
+
+  const getTableContext = () => {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    let node = sel.getRangeAt(0).startContainer;
+    let cell = null, row = null, table = null;
+    while (node && node !== paper) {
+      if (node.tagName === 'TD' || node.tagName === 'TH') cell = node;
+      if (node.tagName === 'TR') row = node;
+      if (node.tagName === 'TABLE') { table = node; break; }
+      node = node.parentNode;
+    }
+    return table ? { cell, row, table } : null;
+  };
+
+  $('[data-act="tableAddRow"]', m.el).onclick = () => {
+    const ctx = getTableContext();
+    if (!ctx || !ctx.row) return toast('Place cursor inside a table row to add a row');
+    const cols = ctx.row.children.length;
+    const newRow = document.createElement('tr');
+    for (let i = 0; i < cols; i++) {
+      const td = document.createElement('td');
+      td.innerHTML = '<br>';
+      newRow.appendChild(td);
+    }
+    ctx.row.after(newRow);
+    markDirty();
+  };
+
+  $('[data-act="tableDelRow"]', m.el).onclick = () => {
+    const ctx = getTableContext();
+    if (!ctx || !ctx.row) return toast('Place cursor inside a table row to delete it');
+    ctx.row.remove();
+    markDirty();
+  };
+
+  $('[data-act="tableAddCol"]', m.el).onclick = () => {
+    const ctx = getTableContext();
+    if (!ctx || !ctx.table) return toast('Place cursor inside a table to add a column');
+    const colIdx = ctx.cell ? ctx.cell.cellIndex : ctx.table.rows[0]?.cells.length - 1;
+    for (const row of ctx.table.rows) {
+      const isHeader = row.parentElement?.tagName === 'THEAD' || row.rowIndex === 0 && row.cells[0]?.tagName === 'TH';
+      const newCell = document.createElement(isHeader ? 'th' : 'td');
+      newCell.innerHTML = isHeader ? 'Header' : '<br>';
+      if (row.cells[colIdx]) row.cells[colIdx].after(newCell);
+      else row.appendChild(newCell);
+    }
+    markDirty();
+  };
+
+  $('[data-act="tableDelCol"]', m.el).onclick = () => {
+    const ctx = getTableContext();
+    if (!ctx || !ctx.cell) return toast('Place cursor inside a table column to delete it');
+    const colIdx = ctx.cell.cellIndex;
+    for (const row of ctx.table.rows) {
+      if (row.cells[colIdx]) row.cells[colIdx].remove();
+    }
+    markDirty();
+  };
+
+  // Tab key navigation inside tables
+  paper.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      const ctx = getTableContext();
+      if (ctx && ctx.cell) {
+        e.preventDefault();
+        const nextCell = ctx.cell.nextElementSibling;
+        if (nextCell) {
+          nextCell.focus();
+        } else {
+          const nextRow = ctx.row.nextElementSibling;
+          if (nextRow && nextRow.cells[0]) {
+            nextRow.cells[0].focus();
+          } else {
+            // Append a new row at end of table just like MS Word!
+            $('[data-act="tableAddRow"]', m.el).click();
+          }
+        }
+      }
+    }
+  });
+
+  // Insert Tab Actions: Other Elements
+  $('[data-act="insertLink"]', m.el).onclick = async () => {
+    const url = await prompt({ title: 'Insert Link', label: 'Web Address (URL)', placeholder: 'https://example.com' });
+    if (!url) return;
+    document.execCommand('createLink', false, url.trim());
+    paper.focus();
+    markDirty();
+  };
+
+  $('[data-act="insertDivider"]', m.el).onclick = () => {
+    document.execCommand('insertHorizontalRule', false, null);
+    paper.focus();
+    markDirty();
+  };
+
+  $('[data-act="insertCallout"]', m.el).onclick = () => {
+    const html = `<div class="word-callout"><p><b>Note:</b> Type your important note here.</p></div><p><br></p>`;
+    document.execCommand('insertHTML', false, html);
+    paper.focus();
+    markDirty();
+  };
+
+  $('[data-act="insertDate"]', m.el).onclick = () => {
+    const now = new Date();
+    const dStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    document.execCommand('insertText', false, dStr);
+    paper.focus();
+    markDirty();
+  };
+
+  m.el.querySelectorAll('[data-sym]').forEach(btn => {
+    btn.onclick = () => {
+      document.execCommand('insertText', false, btn.dataset.sym);
+      paper.focus();
+      markDirty();
+    };
+  });
+
+  $('[data-act="insertChecklist"]', m.el).onclick = () => {
+    const html = `<p class="word-task"><input type="checkbox"> <span>To-do item</span></p>`;
+    document.execCommand('insertHTML', false, html);
+    paper.focus();
+    markDirty();
+  };
+
+  $('[data-act="insertQuote"]', m.el).onclick = () => {
+    document.execCommand('formatBlock', false, '<blockquote>');
+    paper.focus();
+    markDirty();
+  };
+
+  // Layout Tab: Margins & Width
+  m.el.querySelectorAll('[data-act="setMargin"]').forEach(btn => {
+    btn.onclick = () => {
+      m.el.querySelectorAll('[data-act="setMargin"]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const val = btn.dataset.val;
+      const rulerL = $('.word-ruler-margin-left', m.el);
+      const rulerR = $('.word-ruler-margin-right', m.el);
+      if (val === 'narrow') {
+        paper.style.padding = '32px 36px';
+        if (rulerL) rulerL.style.width = '36px';
+        if (rulerR) rulerR.style.width = '36px';
+      } else if (val === 'wide') {
+        paper.style.padding = '64px 96px';
+        if (rulerL) rulerL.style.width = '96px';
+        if (rulerR) rulerR.style.width = '96px';
+      } else {
+        paper.style.padding = '54px 64px';
+        if (rulerL) rulerL.style.width = '64px';
+        if (rulerR) rulerR.style.width = '64px';
+      }
+    };
+  });
+
+  m.el.querySelectorAll('[data-act="setWidth"]').forEach(btn => {
+    btn.onclick = () => {
+      m.el.querySelectorAll('[data-act="setWidth"]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const val = btn.dataset.val;
+      const track = $('#wordRulerTrack', m.el);
+      if (val === 'wide') {
+        paper.style.width = '100%';
+        paper.style.maxWidth = '1180px';
+        if (track) { track.style.width = '100%'; track.style.maxWidth = '1180px'; }
+      } else {
+        paper.style.width = '816px';
+        paper.style.maxWidth = '100%';
+        if (track) { track.style.width = '816px'; track.style.maxWidth = '100%'; }
+      }
+    };
+  });
+
+  // View Tab: Ruler, Shadow, Zoom
+  const rulerCheck = $('#toggleRulerCheck', m.el);
+  const rulerBar = $('#wordRulerBar', m.el);
+  if (rulerCheck && rulerBar) {
+    rulerCheck.onchange = () => {
+      rulerBar.hidden = !rulerCheck.checked;
+    };
+  }
+
+  const shadowCheck = $('#toggleShadowCheck', m.el);
+  if (shadowCheck) {
+    shadowCheck.onchange = () => {
+      paper.classList.toggle('no-shadow', !shadowCheck.checked);
+    };
+  }
+
+  const setZoom = (z) => {
+    currentZoom = Math.max(50, Math.min(200, z));
+    paper.style.transform = `scale(${currentZoom / 100})`;
+    paper.style.transformOrigin = 'top center';
+    const vText = $('#viewZoomText', m.el);
+    const sText = $('#statusZoomNum', m.el);
+    if (vText) vText.textContent = `${currentZoom}%`;
+    if (sText) sText.textContent = `${currentZoom}%`;
+  };
+
+  m.el.querySelectorAll('[data-act="zoomIn"]').forEach(b => b.onclick = () => setZoom(currentZoom + 10));
+  m.el.querySelectorAll('[data-act="zoomOut"]').forEach(b => b.onclick = () => setZoom(currentZoom - 10));
+  m.el.querySelectorAll('[data-act="zoomReset"]').forEach(b => b.onclick = () => setZoom(100));
+
+  // Fullscreen Mode Toggle
+  const fsBtn = $('[data-act="fullscreen"]', m.el);
+  if (fsBtn) {
+    fsBtn.onclick = () => {
+      isFullscreen = !isFullscreen;
+      const modalEl = $('.modal.ms-word-modal', m.el);
+      if (modalEl) modalEl.classList.toggle('fullscreen', isFullscreen);
+      fsBtn.innerHTML = isFullscreen ? icon('minimize') : icon('maximize');
+      fsBtn.title = isFullscreen ? 'Exit Fullscreen' : 'Toggle Fullscreen';
+    };
+  }
+
+  cleanupListeners = () => {
+    document.removeEventListener('selectionchange', onSelectionChange);
+    document.removeEventListener('click', hidePopovers);
+  };
+
+  // Close modal
+  $('[data-cancel]', m.el).onclick = () => {
+    cleanupListeners();
+    m.close();
+  };
+
+  // Wrapped HTML Generator for DOCX Export
+  // Download DOCX Directly
+  const downloadDocx = async () => {
+    let name = nameIn.value.trim() || 'Document.docx';
+    if (!name.toLowerCase().endsWith('.docx')) {
+      name = name.replace(/\.[^.]+$/, '') + '.docx';
+    }
+    try {
+      const htmlContent = cleanDocHtml(paper.innerHTML);
+      const blob = await generateStandardDocx(htmlContent);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('Document downloaded');
+    } catch (err) {
+      toastError('Failed to export document: ' + err.message);
+    }
+  };
+  $('[data-act="download"]', m.el).onclick = downloadDocx;
+
+  // Load Existing or Initial Content
+  if (existing) {
+    try {
+      const parts = [...folder, existing];
+      const res = await fetch(fileUrl(parts));
+      if (!res.ok) throw new Error('Could not load file');
+      const buf = await res.arrayBuffer();
+      const docData = await readDocFile(buf, existing);
+      if (docData.html && docData.html.trim().length > 0) {
+        paper.innerHTML = cleanDocHtml(docData.html);
+      } else if (docData.textRuns && docData.textRuns.length > 0) {
+        paper.innerHTML = docData.textRuns.map(p => `<p>${esc(p)}</p>`).join('');
+      } else {
+        paper.innerHTML = '<p><br></p>';
+      }
+    } catch (e) {
+      toastError('Could not load document: ' + e.message);
+      paper.innerHTML = '<p><br></p>';
+    }
+  } else {
+    paper.innerHTML = initialHtml || '<h1>Document Title</h1><p>Start drafting your document here...</p><p><br></p>';
+  }
+
+  updateStats();
+  setTimeout(() => paper.focus(), 80);
+
+  // Save to Pocket Code
+  let saving = false;
+  const save = async () => {
+    if (saving) return;
+    let name = nameIn.value.trim();
+    if (!name) { nameIn.focus(); return toastError('Give the document a name'); }
+    if (name.includes('/')) return toastError('File name cannot contain “/”');
+    if (!name.toLowerCase().endsWith('.docx')) {
+      name = name.replace(/\.[^.]+$/, '') + '.docx';
+      nameIn.value = name;
+    }
+
+    saving = true;
+    try {
+      const htmlContent = cleanDocHtml(paper.innerHTML);
+      const docxBlob = await generateStandardDocx(htmlContent);
+      const file = new File([docxBlob], name, {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      });
+
+      if (existing && name !== existing) {
+        await api(`/files/${joinPath([...folder, existing])}`, { method: 'PATCH', body: JSON.stringify({ name }) });
+      }
+      try {
+        await uploadOne([...folder, name], file, { overwrite: !!existing && name === existing });
+      } catch (e) {
+        if (e.status !== 409 || e.message !== 'File already exists') throw e;
+        if (!await confirmDialog({ title: 'Replace file?', message: `<b>${esc(name)}</b> already exists. Replace it?`, confirm: 'Replace', danger: false })) return;
+        await uploadOne([...folder, name], file, { overwrite: true });
+      }
+      isDirty = false;
+      const st = $('#wordSaveStatus', m.el);
+      if (st) {
+        st.className = 'word-status-pill saved';
+        st.innerHTML = `${icon('check')} <span>Saved</span>`;
+      }
+      toast('Document saved');
+      changed();
+    } catch (e) {
+      toastError(e.message || 'Failed to save document');
+    } finally {
+      saving = false;
+    }
+  };
+
+  $('[data-save]', m.el).onclick = save;
+  $('[data-act="quick-save"]', m.el).onclick = save;
+  m.el.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      save();
+    }
+  });
+}
+
+function extractDocStrings(u8) {
+  const isMimeHeader = (str) => {
+    if (!str) return false;
+    const s = str.trim();
+    if (/^MIME-Version:/i.test(s)) return true;
+    if (/^------=mhtDocumentPart/i.test(s)) return true;
+    if (/^Content-(?:Type|Transfer-Encoding|Location|ID):/i.test(s)) return true;
+    if (/^[A-Za-z0-9+/=]{40,}$/.test(s)) return true;
+    return false;
+  };
+
+  const utf16Paras = [];
+  let cur = '';
+  for (let i = 0; i < u8.length - 1; i += 2) {
+    const code = u8[i] | (u8[i + 1] << 8);
+    if (code === 13 || code === 10) {
+      const trimmed = cur.trim();
+      if (trimmed.length > 1 && !isMimeHeader(trimmed)) utf16Paras.push(trimmed);
+      cur = '';
+    } else if ((code >= 32 && code <= 126) || (code >= 160 && code <= 65533)) {
+      cur += String.fromCharCode(code);
+    } else {
+      const trimmed = cur.trim();
+      if (trimmed.length > 20 && !isMimeHeader(trimmed)) utf16Paras.push(trimmed);
+      cur = '';
+    }
+  }
+  if (cur.trim().length > 1 && !isMimeHeader(cur.trim())) utf16Paras.push(cur.trim());
+
+  if (utf16Paras.join(' ').length < 100) {
+    const ansiParas = [];
+    cur = '';
+    for (let i = 0; i < u8.length; i++) {
+      const code = u8[i];
+      if (code === 13 || code === 10) {
+        const trimmed = cur.trim();
+        if (trimmed.length > 1 && !isMimeHeader(trimmed)) ansiParas.push(trimmed);
+        cur = '';
+      } else if (code >= 32 && code <= 126) {
+        cur += String.fromCharCode(code);
+      } else {
+        const trimmed = cur.trim();
+        if (trimmed.length > 20 && !isMimeHeader(trimmed)) ansiParas.push(trimmed);
+        cur = '';
+      }
+    }
+    if (cur.trim().length > 1 && !isMimeHeader(cur.trim())) ansiParas.push(cur.trim());
+    if (ansiParas.join(' ').length > utf16Paras.join(' ').length) return ansiParas;
+  }
+  return utf16Paras;
+}
+
 /* ---------- Preview ---------- */
 async function openPreview(name) {
   const parts = [...state.path, name];
@@ -787,6 +2578,7 @@ async function openPreview(name) {
   const k = kind(name);
   const file = state.data.files.find(f => f.name === name);
   const textual = isTextual(name);
+  const isDoc = k === 'docx';
   const edit = perms.canEdit;
 
   const m = modal({
@@ -795,7 +2587,7 @@ async function openPreview(name) {
     wide: true,
     headTools: `
       ${textual ? `<button class="icon-btn" data-copy title="Copy contents">${icon('copy')}</button>` : ''}
-      ${textual && edit ? `<button class="icon-btn" data-edit title="Edit">${icon('edit')}</button>` : ''}
+      ${(textual || isDoc) && edit ? `<button class="icon-btn" data-edit title="Edit in browser">${icon('edit')}</button>` : ''}
       <button class="icon-btn" data-link title="Copy download link">${icon('link')}</button>
       ${edit ? `<button class="icon-btn danger" data-del title="Move to Trash">${icon('trash')}</button>` : ''}
       <a class="btn primary" href="${url}?download" style="margin:0 4px">${icon('download')} Download</a>`,
@@ -812,7 +2604,70 @@ async function openPreview(name) {
     else if (k === 'pdf') body.innerHTML = `<iframe src="${url}" title="${esc(name)}"></iframe>`;
     else if (k === 'video') body.innerHTML = `<div class="preview-center"><video src="${url}" controls></video></div>`;
     else if (k === 'audio') body.innerHTML = `<div class="preview-center"><audio src="${url}" controls></audio></div>`;
-    else if (textual) {
+    else if (k === 'docx') {
+      if (file && file.size > 25 * 1024 * 1024) throw new Error('too-big');
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Could not load file');
+      const buffer = await res.arrayBuffer();
+      const docData = await readDocFile(buffer, name);
+
+      if (docData.type === 'html') {
+        body.innerHTML = `
+          <div class="docx-preview-wrapper">
+            <div class="docx-wrapper">
+              <section class="docx word-paper" style="padding:54pt 54pt;max-width:816px;width:100%;min-height:1056px;box-sizing:border-box;">
+                ${DOMPurify.sanitize(cleanDocHtml(docData.html))}
+              </section>
+            </div>
+          </div>`;
+      } else if (docData.type === 'openxml') {
+        let rendered = false;
+        if (window.docx && typeof window.docx.renderAsync === 'function') {
+          try {
+            const wrap = document.createElement('div');
+            wrap.className = 'docx-preview-wrapper';
+            body.replaceChildren(wrap);
+            await window.docx.renderAsync(buffer, wrap, null, {
+              inWrapper: true,
+              ignoreWidth: false,
+              ignoreHeight: false,
+              breakPages: true,
+              useBase64URL: true,
+            });
+            rendered = true;
+          } catch (renderErr) {
+            console.warn('docx.renderAsync failed, falling back to clean HTML:', renderErr);
+          }
+        }
+        if (!rendered) {
+          if (docData.html && docData.html.trim().length > 0) {
+            body.innerHTML = `
+              <div class="docx-preview-wrapper">
+                <div class="docx-wrapper">
+                  <section class="docx word-paper" style="padding:54pt 54pt;max-width:816px;width:100%;min-height:1056px;box-sizing:border-box;">
+                    ${DOMPurify.sanitize(cleanDocHtml(docData.html))}
+                  </section>
+                </div>
+              </div>`;
+          } else {
+            throw new Error('no-preview');
+          }
+        }
+      } else if (docData.type === 'legacy') {
+        if (docData.textRuns && docData.textRuns.length > 0) {
+          body.innerHTML = `
+            <div class="legacy-doc-preview">
+              <div class="legacy-doc-banner">
+                <span>${ext(name) === 'doc' ? 'Legacy Word document (.doc)' : 'Document text preview'}</span>
+                <a class="btn" href="${url}?download">${icon('download')} Download original</a>
+              </div>
+              <div class="legacy-doc-content">${docData.textRuns.map(p => `<p>${esc(p)}</p>`).join('')}</div>
+            </div>`;
+        } else {
+          throw new Error('no-preview');
+        }
+      }
+    } else if (textual) {
       if (file && file.size > 5 * 1024 * 1024) throw new Error('too-big');
       const res = await fetch(url);
       if (!res.ok) throw new Error('Could not load file');
@@ -844,7 +2699,16 @@ async function openPreview(name) {
 
   if (textual) {
     $('[data-copy]', m.el).onclick = () => text != null && copy(text, 'Copied to clipboard');
-    if (edit) $('[data-edit]', m.el).onclick = () => { if (text == null) return; m.close(); openEditor(name, text); };
+  }
+  if (edit) {
+    const editBtn = $('[data-edit]', m.el);
+    if (editBtn) {
+      editBtn.onclick = () => {
+        m.close();
+        if (isDoc) openDocEditor(name);
+        else if (text != null) openEditor(name, text);
+      };
+    }
   }
 }
 

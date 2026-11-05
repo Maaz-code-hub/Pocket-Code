@@ -23,6 +23,10 @@ module.exports = function localBackend({ dataDir }) {
   return {
     name: `local disk (${root})`,
 
+    async ping() {
+      return { ok: true, timestamp: Date.now(), local: true };
+    },
+
     // Direct children. Folder `updated` is left to the caller.
     async entries(dir) {
       const full = join(dir);

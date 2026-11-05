@@ -14,6 +14,7 @@ try { process.loadEnvFile(path.join(__dirname, '.env')); } catch {}
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_UPLOAD = (Number(process.env.MAX_UPLOAD_MB) || 50) * 1024 * 1024;
 const STORAGE_LIMIT = (Number(process.env.STORAGE_LIMIT_MB) || 1024) * 1024 * 1024;
+const KEEP_ALIVE_HOURS = process.env.KEEP_ALIVE_HOURS !== undefined ? Number(process.env.KEEP_ALIVE_HOURS) : 6;
 const ACCESS_KEY = process.env.ACCESS_KEY || ''; // optional: needed to open the site at all
 const EDIT_KEY = process.env.EDIT_KEY || '';     // optional: needed to change anything (view-only mode)
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -26,6 +27,8 @@ const MIME = {
   '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.ico': 'image/x-icon',
   '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.webm': 'video/webm', '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav', '.txt': 'text/plain; charset=utf-8', '.md': 'text/plain; charset=utf-8',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.doc': 'application/msword', '.csv': 'text/csv; charset=utf-8', '.rtf': 'application/rtf',
 };
 
 // Names: no slashes, no control chars, not "." / "..", not reserved, sane length.
@@ -232,6 +235,21 @@ async function handleApi(req, res, url) {
   if (kind === 'status') {
     return send(res, 200, { locked: !!ACCESS_KEY, authorized: canView(req), editLocked: !!EDIT_KEY, canEdit: canEdit(req) });
   }
+  if (kind === 'keepalive' || kind === 'ping') {
+    try {
+      const pingRes = await storage.ping();
+      return send(res, 200, {
+        ok: true,
+        message: 'Keep-alive ping sent to Supabase successfully',
+        backend: storage.name,
+        timestamp: new Date().toISOString(),
+        keepAliveHours: KEEP_ALIVE_HOURS,
+        ping: pingRes,
+      });
+    } catch (err) {
+      return send(res, 502, { ok: false, error: err.message, timestamp: new Date().toISOString() });
+    }
+  }
   if (!canView(req)) throw httpError(401, 'Access key required');
 
   // View-only mode: anything that changes data (and the trash) needs the edit key.
@@ -239,6 +257,15 @@ async function handleApi(req, res, url) {
   if (writes && !canEdit(req)) throw httpError(403, 'This site is view-only. Unlock editing to make changes.');
 
   if (kind === 'usage') return send(res, 200, { ...(await storage.usage()), limit: STORAGE_LIMIT });
+  if (kind === 'cache') {
+    if (req.method === 'GET') return send(res, 200, storage.cache.status());
+    if (req.method === 'DELETE') {
+      if (!canEdit(req)) throw httpError(403, 'Unlock editing to clear cache');
+      await storage.cache.delPattern('*');
+      return send(res, 200, { ok: true, message: 'Cache cleared' });
+    }
+    throw httpError(405, 'Method not allowed');
+  }
   if (kind === 'folders') return handleFolders(req, res, parts);
   if (kind === 'files') return handleFiles(req, res, parts, url);
   if (kind === 'zip') return handleZip(req, res, parts);
@@ -279,14 +306,35 @@ async function purgeTrash() {
   try { await storage.trash.purge(); } catch (e) { console.error('Trash cleanup failed:', e.message); }
 }
 
+async function keepAlivePing() {
+  if (KEEP_ALIVE_HOURS <= 0) return;
+  try {
+    const res = await storage.ping();
+    console.log(`[Keep-Alive] Supabase heartbeat sent (${res.items !== undefined ? `${res.items} items listed` : 'ok'}) — project kept active`);
+  } catch (e) {
+    console.warn(`[Keep-Alive] Heartbeat ping warning: ${e.message}`);
+  }
+}
+
 (async () => {
   await storage.init?.();
   server.listen(PORT, () => {
     console.log(`Pocket Code running on http://localhost:${PORT}`);
     console.log(`Storing files in ${storage.name}`);
+    if (storage.cache) {
+      const st = storage.cache.status();
+      console.log(`Cache: ${st.provider} active (${st.ttlHours}h TTL — sends DB requests once per ${st.ttlHours}h)`);
+    }
+    if (KEEP_ALIVE_HOURS > 0) {
+      console.log(`Keep-Alive: Auto-request active every ${KEEP_ALIVE_HOURS}h (prevents Supabase from pausing)`);
+    }
     if (ACCESS_KEY) console.log('Access key enabled: the site asks for a key to open.');
     if (EDIT_KEY) console.log('Edit key enabled: view-only until unlocked.');
   });
   purgeTrash();
   setInterval(purgeTrash, 6 * 60 * 60 * 1000).unref();
+  if (KEEP_ALIVE_HOURS > 0) {
+    keepAlivePing();
+    setInterval(keepAlivePing, KEEP_ALIVE_HOURS * 60 * 60 * 1000).unref();
+  }
 })().catch((e) => { console.error(`Startup failed: ${e.message}`); process.exit(1); });

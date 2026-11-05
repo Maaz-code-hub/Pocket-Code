@@ -1,0 +1,46 @@
+name: Keep Supabase Active
+
+on:
+  schedule:
+    # Runs every 2 days at 06:00 UTC (well within the 7-day Supabase pause window)
+    - cron: '0 6 */2 * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab anytime
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Storage API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SUPABASE_BUCKET: ${{ secrets.SUPABASE_BUCKET || 'code-saver' }}
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          echo "Sending keep-alive heartbeat..."
+          
+          # 1. Ping deployed Pocket Code app if APP_URL is configured
+          if [ -n "$APP_URL" ]; then
+            echo "Pinging Pocket Code app at $APP_URL/api/keepalive..."
+            curl -fsSL --retry 3 --max-time 15 "$APP_URL/api/keepalive" || echo "App ping returned warning"
+          fi
+
+          # 2. Ping Supabase directly if credentials exist in GitHub Secrets
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_KEY" ]; then
+            echo "Pinging Supabase storage API directly at $SUPABASE_URL..."
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+              "$SUPABASE_URL/storage/v1/object/list/$SUPABASE_BUCKET" \
+              -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"prefix":"","limit":1}')
+            
+            echo "Supabase HTTP status: $STATUS"
+            if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
+              echo "✅ Supabase project successfully kept active!"
+            else
+              echo "⚠️ Supabase responded with status $STATUS"
+            fi
+          else
+            echo "ℹ️ Tip: Add SUPABASE_URL and SUPABASE_SERVICE_KEY to your GitHub Repository Secrets to keep Supabase awake even when your local machine is off."
+          fi
+

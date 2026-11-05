@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "description": "Personal cloud saver for code and docs — folders, preview, download. No sign-in.",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=20.12" },
-  "license": "MIT"
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "ioredis": "^6.0.0"
+  }
 }

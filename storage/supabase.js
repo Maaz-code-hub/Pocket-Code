@@ -105,6 +105,14 @@ module.exports = function supabaseBackend({ url, key, bucket }) {
       }
     },
 
+    // Lightweight heartbeat request to reset Supabase 7-day inactivity pause
+    async ping() {
+      const page = await call('POST', `/object/list/${bucket}`, {
+        json: { prefix: '', limit: 1 },
+      });
+      return { ok: true, timestamp: Date.now(), items: Array.isArray(page) ? page.length : 0 };
+    },
+
     async entries(dir) {
       const folders = [], files = [];
       for (const o of await children(dir)) {
