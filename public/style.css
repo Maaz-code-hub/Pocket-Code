@@ -1371,3 +1371,16 @@ main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 80px; }
     display: none;
   }
 }
+
+/* Hide Netlify drawer & badge widgets */
+iframe[src*="netlify"],
+iframe[id*="netlify"],
+iframe[class*="netlify"],
+netlify-drawer,
+#netlify-drawer-container,
+[data-netlify-drawer] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
