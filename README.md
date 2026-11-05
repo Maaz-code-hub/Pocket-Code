@@ -1,4 +1,4 @@
-# Pocket Code
+# DevLocker
 
 A personal cloud for code snippets and docs. No sign-in, no npm dependencies.
 

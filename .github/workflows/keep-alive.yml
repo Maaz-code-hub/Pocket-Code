@@ -19,9 +19,9 @@ jobs:
         run: |
           echo "Sending keep-alive heartbeat..."
           
-          # 1. Ping deployed Pocket Code app if APP_URL is configured
+          # 1. Ping deployed DevLocker app if APP_URL is configured
           if [ -n "$APP_URL" ]; then
-            echo "Pinging Pocket Code app at $APP_URL/api/keepalive..."
+            echo "Pinging DevLocker app at $APP_URL/api/keepalive..."
             curl -fsSL --retry 3 --max-time 15 "$APP_URL/api/keepalive" || echo "App ping returned warning"
           fi
 

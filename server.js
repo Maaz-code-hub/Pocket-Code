@@ -1,4 +1,4 @@
-// Personal Code/Doc Saver — zero-dependency Node server.
+// DevLocker — zero-dependency Node server.
 // Files are stored in Supabase Storage (if configured) or on local disk.
 const http = require('node:http');
 const fsp = require('node:fs/promises');
@@ -69,7 +69,7 @@ function keyMatches(given, expected) {
 const canView = (req) => !ACCESS_KEY || keyMatches(cookie(req, 'key'), ACCESS_KEY);
 const canEdit = (req) => !EDIT_KEY || keyMatches(cookie(req, 'ekey'), EDIT_KEY);
 function setCookie(req, name, value, maxAge) {
-  const secure = req.headers['x-forwarded-proto'] === 'https' || req.socket.encrypted ? '; Secure' : '';
+  const secure = req.headers['x-forwarded-proto'] === 'https' || req.socket?.encrypted ? '; Secure' : '';
   return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 
@@ -226,8 +226,14 @@ async function handleTrash(req, res, parts) {
 }
 
 async function handleApi(req, res, url) {
+  let apiPath = url.pathname;
+  if (apiPath.startsWith('/.netlify/functions/api')) {
+    apiPath = apiPath.slice('/.netlify/functions/api'.length);
+  } else if (apiPath.startsWith('/api')) {
+    apiPath = apiPath.slice(4);
+  }
   let segs;
-  try { segs = url.pathname.slice(5).split('/').filter(Boolean).map(decodeURIComponent); }
+  try { segs = apiPath.split('/').filter(Boolean).map(decodeURIComponent); }
   catch { throw httpError(400, 'Bad path'); }
   const [kind, ...parts] = segs;
 
@@ -289,10 +295,12 @@ async function serveStatic(req, res, pathname) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
+async function requestHandler(req, res) {
   try {
     const url = new URL(req.url, 'http://x');
-    if (url.pathname.startsWith('/api/')) return await handleApi(req, res, url);
+    if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/.netlify/functions/api')) {
+      return await handleApi(req, res, url);
+    }
     if (req.method !== 'GET') throw httpError(405, 'Method not allowed');
     return await serveStatic(req, res, url.pathname);
   } catch (err) {
@@ -300,7 +308,9 @@ const server = http.createServer(async (req, res) => {
     else res.destroy();
     if (!err.status) console.error(err);
   }
-});
+}
+
+const server = http.createServer(requestHandler);
 
 async function purgeTrash() {
   try { await storage.trash.purge(); } catch (e) { console.error('Trash cleanup failed:', e.message); }
@@ -316,10 +326,14 @@ async function keepAlivePing() {
   }
 }
 
-(async () => {
-  await storage.init?.();
+async function startServer() {
+  try {
+    await storage.init?.();
+  } catch (e) {
+    console.warn(`[Storage] Startup init warning: ${e.message}`);
+  }
   server.listen(PORT, () => {
-    console.log(`Pocket Code running on http://localhost:${PORT}`);
+    console.log(`DevLocker running on http://localhost:${PORT}`);
     console.log(`Storing files in ${storage.name}`);
     if (storage.cache) {
       const st = storage.cache.status();
@@ -337,4 +351,19 @@ async function keepAlivePing() {
     keepAlivePing();
     setInterval(keepAlivePing, KEEP_ALIVE_HOURS * 60 * 60 * 1000).unref();
   }
-})().catch((e) => { console.error(`Startup failed: ${e.message}`); process.exit(1); });
+}
+
+if (require.main === module && !process.env.NETLIFY) {
+  startServer().catch((e) => {
+    console.error(`Startup failed: ${e.message}`);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  server,
+  requestHandler,
+  handleApi,
+  storage,
+  startServer,
+};

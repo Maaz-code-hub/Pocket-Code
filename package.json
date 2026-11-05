@@ -1,7 +1,7 @@
 {
-  "name": "pocket-code",
+  "name": "devlocker",
   "version": "1.0.0",
-  "description": "Personal cloud saver for code and docs — folders, preview, download. No sign-in.",
+  "description": "DevLocker — personal cloud locker for code and docs.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -11,6 +11,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "ioredis": "^6.0.0"
+    "ioredis": "^6.0.0",
+    "serverless-http": "^4.0.0"
   }
 }

@@ -346,7 +346,7 @@ function render() {
   const files = data ? data.files.filter(match) : [];
   const total = data ? data.folders.length + data.files.length : 0;
 
-  document.title = isRoot ? 'Pocket Code' : `${path.at(-1)} · Pocket Code`;
+  document.title = isRoot ? 'DevLocker' : `${path.at(-1)} · DevLocker`;
 
   const crumbs = isRoot ? '' : `
     <nav class="crumbs">
@@ -549,7 +549,7 @@ function renderTrash() {
   const data = state.data;
   const q = searchInput.value.trim().toLowerCase();
   const items = data ? data.items.filter(i => !q || i.path.join('/').toLowerCase().includes(q)) : [];
-  document.title = 'Trash · Pocket Code';
+  document.title = 'Trash · DevLocker';
   const daysLeft = (i) => Math.max(0, Math.ceil((i.expiresAt - Date.now()) / 86400000));
 
   app.innerHTML = `
@@ -1585,7 +1585,7 @@ async function openDocEditor(existing = null, initialHtml = '') {
           </div>
           <div class="word-titlebar-right">
             <button class="word-action-btn" data-act="download" title="Export .docx to your device">${icon('download')} <span>Download</span></button>
-            <button class="word-action-btn primary" data-save title="Save to Pocket Code (Ctrl+S)">${icon('save')} <span>Save</span></button>
+            <button class="word-action-btn primary" data-save title="Save to DevLocker (Ctrl+S)">${icon('save')} <span>Save</span></button>
             <button class="word-titlebar-icon-btn" data-act="fullscreen" title="Toggle Fullscreen">${icon('maximize')}</button>
             <button class="word-titlebar-icon-btn close-btn" data-cancel title="Close">${icon('close')}</button>
           </div>
@@ -1927,7 +1927,7 @@ async function openDocEditor(existing = null, initialHtml = '') {
             <span class="word-status-item" title="Proofing">${icon('check')} <span style="margin-left:2px">No errors</span></span>
           </div>
           <div class="word-statusbar-center">
-            <span class="word-status-item" id="wordStatusDetail">Pocket Code Word Editor</span>
+            <span class="word-status-item" id="wordStatusDetail">DevLocker Word Editor</span>
           </div>
           <div class="word-statusbar-right">
             <span class="word-view-icon active" title="Print Layout View">${icon('pageLayout')}</span>
@@ -2464,7 +2464,7 @@ async function openDocEditor(existing = null, initialHtml = '') {
   updateStats();
   setTimeout(() => paper.focus(), 80);
 
-  // Save to Pocket Code
+  // Save to DevLocker
   let saving = false;
   const save = async () => {
     if (saving) return;

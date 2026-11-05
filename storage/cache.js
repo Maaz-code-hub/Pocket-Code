@@ -1,4 +1,4 @@
-// Redis & In-Memory Cache layer for Pocket Code.
+// Redis & In-Memory Cache layer for DevLocker.
 // Minimizes load on the database (Supabase / disk) by caching folder listings,
 // file metadata, existence checks, usage totals, and small files with a configurable
 // TTL (default: 12 hours). When files or folders are modified, affected cache keys
