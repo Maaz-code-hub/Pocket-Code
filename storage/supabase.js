@@ -169,6 +169,20 @@ module.exports = function supabaseBackend({ url, key, bucket }) {
     deleteFolder: async (dir) => removeKeys(await allKeys(dir)),
     deleteFile: (file) => removeKeys([toKey(file)]),
 
+    async createSignedUploadUrl(parts, { upsert = false } = {}) {
+      const data = await call('POST', `/object/upload/sign/${bucket}/${toUrlPath(parts)}`, {
+        headers: upsert ? { 'x-upsert': 'true' } : {},
+        json: {},
+      });
+      const uploadUrl = (data.url && (data.url.startsWith('http://') || data.url.startsWith('https://')))
+        ? data.url
+        : `${base}${data.url.startsWith('/') ? '' : '/'}${data.url}`;
+      return {
+        uploadUrl,
+        token: data.token,
+      };
+    },
+
     async readFile(file) {
       const res = await call('GET', `/object/${bucket}/${toUrlPath(file)}`, { raw: true });
       return { stream: Readable.fromWeb(res.body), size: Number(res.headers.get('content-length')) || undefined };

@@ -45,6 +45,7 @@ function createStorage(env, rootDir) {
 
   const s = Object.create(backend);
   s.cache = cache;
+  s.invalidatePath = invalidatePath;
 
   let pingStatus = null;
   s.ping = async () => {

@@ -22,6 +22,11 @@ const ICONS = {
   paste: '<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
   move: '<path d="M5 12h14M13 6l6 6-6 6"/><path d="M5 7v10"/>',
   folderMove: '<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M11 13h6M14 10l3 3-3 3"/>',
+  gridMode: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+  listMode: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
+  sort: '<path d="M7 15l5 5 5-5M7 9l5-5 5 5"/>',
+  sortAsc: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+  sortDesc: '<path d="M12 5v14M19 12l-7 7-7-7"/>',
   file: '<path d="M14 3H6a1 1 0 00-1 1v16a1 1 0 001 1h12a1 1 0 001-1V8z"/><path d="M14 3v5h5"/>',
   code: '<path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/>',
   chevron: '<path d="M9 6l6 6-6 6"/>',
@@ -1300,7 +1305,53 @@ function renderTrash() {
 }
 
 /* ---------- Upload ---------- */
-function uploadOne(parts, file, { overwrite = false, onProgress } = {}) {
+async function uploadOne(parts, file, { overwrite = false, onProgress } = {}) {
+  // Direct presigned upload to Supabase Storage (bypasses Netlify 6MB serverless proxy limit)
+  let sign;
+  try {
+    sign = await api('/upload-sign', {
+      method: 'POST',
+      body: JSON.stringify({
+        path: parts,
+        overwrite,
+        size: file.size,
+        mkdirs: true,
+      }),
+    });
+  } catch (e) {
+    throw e;
+  }
+
+  if (sign?.direct && sign?.uploadUrl) {
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', sign.uploadUrl);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded);
+      xhr.onload = () => {
+        if (xhr.status < 300) return resolve();
+        let msg = 'Direct upload failed';
+        try {
+          const parsed = JSON.parse(xhr.responseText);
+          msg = parsed.message || parsed.error || msg;
+        } catch {
+          if (xhr.status === 413) msg = `File too large for storage plan (max ${perms.maxUploadMb || 25} MB)`;
+        }
+        reject(Object.assign(new Error(msg), { status: xhr.status }));
+      };
+      xhr.onerror = () => reject(new Error('Network error during direct upload'));
+      xhr.send(file);
+    });
+
+    // Notify backend to update usage and clear cache
+    await api('/upload-complete', {
+      method: 'POST',
+      body: JSON.stringify({ path: parts, size: file.size }),
+    });
+    return;
+  }
+
+  // Fallback to server-proxied upload (for local disk backend)
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const qs = ['mkdirs=1', overwrite && 'overwrite=1'].filter(Boolean).join('&');
@@ -1309,8 +1360,11 @@ function uploadOne(parts, file, { overwrite = false, onProgress } = {}) {
     xhr.onload = () => {
       if (xhr.status < 300) return resolve();
       let msg = 'Upload failed';
-      try { msg = JSON.parse(xhr.responseText).error; } catch {}
-      reject(Object.assign(new Error(msg), { status: xhr.status }));
+      try { msg = JSON.parse(xhr.responseText).error; }
+      catch {
+        if (xhr.status === 413) msg = `File too large (exceeds ${perms.maxUploadMb || 25} MB server/host limit)`;
+      }
+      reject(Object.assign(new Error(msg || (xhr.status === 413 ? 'File too large' : 'Upload failed')), { status: xhr.status }));
     };
     xhr.onerror = () => reject(new Error('Network error'));
     xhr.send(file);

@@ -200,6 +200,74 @@ async function handleFiles(req, res, parts, url) {
   throw httpError(405, 'Method not allowed');
 }
 
+async function handleUploadSign(req, res) {
+  if (req.method !== 'POST') throw httpError(405, 'Method not allowed');
+  const body = await readJson(req);
+  const { path: parts, overwrite = false, size = 0, mkdirs = false } = body;
+  if (!Array.isArray(parts)) throw httpError(400, 'Invalid path');
+  checkPath(parts, 'file');
+  if (parts.length < 2) throw httpError(400, 'Files must be inside a folder');
+  const parent = parts.slice(0, -1);
+  const file = parts.at(-1);
+  if (!validName(file)) throw httpError(400, 'Invalid file name');
+
+  if (mkdirs) {
+    for (let i = 1; i <= parent.length; i++) {
+      const sub = parent.slice(0, i);
+      if (!(await storage.folderExists(sub))) {
+        await storage.createFolder(sub);
+      }
+    }
+  } else if (!(await storage.folderExists(parent))) {
+    throw httpError(404, 'Folder not found');
+  }
+
+  if (await storage.folderExists(parts)) throw httpError(409, 'A folder with that name already exists');
+
+  if (size > MAX_UPLOAD) {
+    throw httpError(413, `File too large (max ${Math.round(MAX_UPLOAD / 1048576)} MB)`);
+  }
+
+  const { used } = await storage.usage();
+  if (used + size > STORAGE_LIMIT) {
+    throw httpError(507, 'Storage is full. Empty the trash or delete files to free space.');
+  }
+
+  const exists = await storage.fileExists(parts);
+  if (exists && !overwrite) {
+    throw httpError(409, 'File already exists');
+  }
+
+  if (typeof storage.createSignedUploadUrl === 'function') {
+    const signInfo = await storage.createSignedUploadUrl(parts, { upsert: !!overwrite });
+    return send(res, 200, {
+      direct: true,
+      uploadUrl: signInfo.uploadUrl,
+      token: signInfo.token,
+      path: parts,
+    });
+  }
+
+  return send(res, 200, { direct: false, path: parts });
+}
+
+async function handleUploadComplete(req, res) {
+  if (req.method !== 'POST') throw httpError(405, 'Method not allowed');
+  const body = await readJson(req);
+  const { path: parts, size = 0 } = body;
+  if (!Array.isArray(parts)) throw httpError(400, 'Invalid path');
+  checkPath(parts, 'file');
+  if (parts.length < 2) throw httpError(400, 'Files must be inside a folder');
+
+  if (typeof storage.invalidatePath === 'function') {
+    await storage.invalidatePath(parts, false);
+  }
+  if (typeof size === 'number' && size > 0) {
+    storage.addUsage(size);
+  }
+  return send(res, 200, { ok: true, path: parts, size, updated: Date.now() });
+}
+
 async function handleZip(req, res, parts) {
   if (req.method !== 'GET') throw httpError(405, 'Method not allowed');
   checkPath(parts, 'folder');
@@ -386,6 +454,8 @@ async function handleApi(req, res, url) {
   }
   if (kind === 'folders') return handleFolders(req, res, parts);
   if (kind === 'files') return handleFiles(req, res, parts, url);
+  if (kind === 'upload-sign') return handleUploadSign(req, res);
+  if (kind === 'upload-complete') return handleUploadComplete(req, res);
   if (kind === 'tree') return handleTree(req, res);
   if (kind === 'move') return handleMove(req, res);
   if (kind === 'copy') return handleCopy(req, res);

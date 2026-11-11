@@ -12,7 +12,7 @@ A lightweight, personal cloud locker for your code snippets, documents, and file
 - 💻 **Syntax-Highlighted Code Editor**: Built-in CodeMirror editor with syntax coloring, line numbers, search (`Ctrl+F`), and comment toggles (`Ctrl+/`).
 - ⚡ **Redis Caching Layer**: Integrated with Upstash or Redis Cloud to cache folder structures and files with a 12-hour TTL — reducing database queries to once every 12 hours. Falls back to in-memory caching seamlessly.
 - 💓 **Supabase Keep-Alive Heartbeat**: Built-in automated heartbeat pings (`KEEP_ALIVE_HOURS=6`) and GitHub Actions workflow to prevent Supabase's free-tier 7-day auto-pause.
-- 🚀 **Netlify Serverless Ready**: Deploy to Netlify in minutes with edge CDN static asset delivery and serverless API functions.
+- 🚀 **Netlify Serverless Ready & Direct Cloud Uploads**: Deploy to Netlify in minutes. Uses Direct-to-Supabase signed uploads to seamlessly bypass Netlify's 6 MB serverless function payload limit, supporting up to 25 MB+ file uploads with real-time progress bars.
 - 👁️ **Instant Previews**: Preview code, Markdown, images, PDFs, audio, and video directly in the browser.
 - 📦 **Bulk Upload & ZIP Download**: Drag & drop entire folder hierarchies (automatically skips `.git` and `node_modules`), or download any folder as a `.zip`.
 - 🗑️ **30-Day Trash**: Accidental deletions go to Trash with instant undo and 30-day retention before permanent purge.
@@ -113,7 +113,7 @@ CACHE_FILE_MAX_MB=5
 | `CACHE_TTL_HOURS` | `12` | Cache TTL in hours. Database queries occur once every N hours. |
 | `CACHE_FILE_MAX_MB` | `5` | Maximum file size in MB cached in Redis for instantaneous previews. |
 | `KEEP_ALIVE_HOURS` | `6` | Hours between automatic Supabase keep-alive pings (prevents 7-day pause). |
-| `MAX_UPLOAD_MB` | `50` | Maximum upload size per file (Supabase free plan limit is 50 MB). |
+| `MAX_UPLOAD_MB` | `25` | Maximum upload size per file (Supabase free plan supports up to 50 MB; Netlify direct upload bypasses the 6 MB function limit). |
 | `STORAGE_LIMIT_MB` | `1024` | Storage limit meter shown in UI (MB). Uploads stop when full. |
 | `EDIT_KEY` | *(empty)* | Optional. When set, guests can view and download, but edits/uploads require this key. |
 | `ACCESS_KEY` | *(empty)* | Optional. Password-protects the entire site. |
