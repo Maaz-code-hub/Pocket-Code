@@ -7,6 +7,7 @@ A lightweight, personal cloud locker for your code snippets, documents, and file
 ## ✨ Features
 
 - 📁 **Organized Folders**: Nested subfolders as deep as you like; create, rename, download, and delete.
+- 📋 **Move, Copy & Paste**: Seamlessly organize files and folders with dedicated Move and Copy action buttons, interactive folder-tree destination picker, floating clipboard bar, right-click context menus, and keyboard shortcuts (`Ctrl+C`, `Ctrl+X`, `Ctrl+V`). Automatic duplicate naming prevents overwrites.
 - 📝 **MS Word-Style Doc Editor**: Professional document workspace with ribbon toolbar (Home, Insert, Layout, Review, View), rich typography (Aptos, Carlito, Calibri, Georgia, JetBrains Mono), page zoom, print layout, and export to `.docx`.
 - 💻 **Syntax-Highlighted Code Editor**: Built-in CodeMirror editor with syntax coloring, line numbers, search (`Ctrl+F`), and comment toggles (`Ctrl+/`).
 - ⚡ **Redis Caching Layer**: Integrated with Upstash or Redis Cloud to cache folder structures and files with a 12-hour TTL — reducing database queries to once every 12 hours. Falls back to in-memory caching seamlessly.

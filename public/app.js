@@ -18,6 +18,10 @@ const ICONS = {
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 011-1h10"/>',
+  cut: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>',
+  paste: '<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
+  move: '<path d="M5 12h14M13 6l6 6-6 6"/><path d="M5 7v10"/>',
+  folderMove: '<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M11 13h6M14 10l3 3-3 3"/>',
   file: '<path d="M14 3H6a1 1 0 00-1 1v16a1 1 0 001 1h12a1 1 0 001-1V8z"/><path d="M14 3v5h5"/>',
   code: '<path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/>',
   chevron: '<path d="M9 6l6 6-6 6"/>',
@@ -334,6 +338,514 @@ const refresh = () => (state.view === 'trash' ? showTrash() : showDir(state.path
 // Call after anything that changes stored data.
 const changed = () => { refresh(); scheduleUsage(); };
 
+/* ---------- Clipboard & Move / Copy / Paste ---------- */
+let clipboard = null;
+let selectedItem = null;
+try {
+  const saved = sessionStorage.getItem('devlocker_clip');
+  if (saved) clipboard = JSON.parse(saved);
+} catch {}
+
+function setClipboard(val) {
+  clipboard = val;
+  try {
+    if (val) sessionStorage.setItem('devlocker_clip', JSON.stringify(val));
+    else sessionStorage.removeItem('devlocker_clip');
+  } catch {}
+  renderClipboardBar();
+  render();
+}
+
+function copyItem(type, name) {
+  const itemPath = [...state.path, name];
+  setClipboard({ action: 'copy', type, path: itemPath, name });
+  toast(`Copied ${type} "${name}" to clipboard.`);
+}
+
+function cutItem(type, name) {
+  const itemPath = [...state.path, name];
+  setClipboard({ action: 'cut', type, path: itemPath, name });
+  toast(`Cut "${name}". Open destination and click Paste.`);
+}
+
+function renderClipboardBar() {
+  let bar = $('#clipboardBar');
+  if (!clipboard) {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'clipboardBar';
+    bar.className = 'clipboard-bar';
+    document.body.appendChild(bar);
+  }
+  const isCut = clipboard.action === 'cut';
+  bar.innerHTML = `
+    <div class="clipboard-info">
+      <span class="clipboard-badge">${isCut ? 'Move' : 'Copy'}</span>
+      <span class="clipboard-name" title="${esc(clipboard.name)}">${esc(clipboard.name)}</span>
+    </div>
+    <div class="clipboard-actions">
+      <button class="btn primary small" id="clipPasteBtn">${icon('paste')} Paste here</button>
+      <button class="icon-btn small" id="clipClearBtn" title="Clear clipboard">${icon('close')}</button>
+    </div>
+  `;
+  $('#clipPasteBtn', bar).onclick = () => pasteItem();
+  $('#clipClearBtn', bar).onclick = () => setClipboard(null);
+}
+
+function generateCopyName(name, existingNames = []) {
+  const set = new Set(existingNames.map(n => n.toLowerCase()));
+  const dot = name.lastIndexOf('.');
+  const hasExt = dot > 0 && !name.startsWith('.');
+  const base = hasExt ? name.slice(0, dot) : name;
+  const ext = hasExt ? name.slice(dot) : '';
+
+  let candidate = `${base} (Copy)${ext}`;
+  let i = 2;
+  while (set.has(candidate.toLowerCase())) {
+    candidate = `${base} (Copy ${i})${ext}`;
+    i++;
+  }
+  return candidate;
+}
+
+async function duplicateItem(type, name) {
+  let existingNames = [];
+  try {
+    if (state.data) {
+      existingNames = type === 'folder'
+        ? state.data.folders.map(f => f.name)
+        : state.data.files.map(f => f.name);
+    }
+  } catch {}
+  const copyName = generateCopyName(name, existingNames);
+  try {
+    await api('/copy', {
+      method: 'POST',
+      body: JSON.stringify({
+        type,
+        from: [...state.path, name],
+        to: state.path,
+        name: copyName,
+      }),
+    });
+    toast(`Duplicated "${name}" as "${copyName}"`);
+    changed();
+  } catch (err) {
+    toastError(err.message);
+  }
+}
+
+async function pasteItem(targetFolder = state.path) {
+  if (!clipboard) {
+    toast('Clipboard is empty. Copy or cut a file or folder first.');
+    return;
+  }
+  if (clipboard.type === 'file' && targetFolder.length === 0) {
+    toastError('Files cannot be placed in root. Please open a folder first.');
+    return;
+  }
+  if (clipboard.type === 'folder' && targetFolder.length >= clipboard.path.length &&
+      clipboard.path.every((p, i) => targetFolder[i] === p)) {
+    toastError('Cannot move or copy a folder into itself or its subfolder.');
+    return;
+  }
+
+  let existingNames = [];
+  try {
+    const targetData = (targetFolder.length === state.path.length && targetFolder.every((p, i) => p === state.path[i]))
+      ? state.data
+      : await api(folderApi(targetFolder));
+    if (targetData) {
+      existingNames = clipboard.type === 'folder'
+        ? targetData.folders.map(f => f.name)
+        : targetData.files.map(f => f.name);
+    }
+  } catch {}
+
+  const isSameFolder = (targetFolder.length === clipboard.path.slice(0, -1).length &&
+    targetFolder.every((p, i) => p === clipboard.path[i]));
+
+  let targetName = clipboard.name;
+  if (isSameFolder) {
+    if (clipboard.action === 'cut') {
+      toast('Item is already in this folder.');
+      return;
+    }
+    targetName = generateCopyName(clipboard.name, existingNames);
+  } else if (existingNames.some(n => n.toLowerCase() === clipboard.name.toLowerCase())) {
+    const choice = await confirmDialog({
+      title: 'Item already exists',
+      message: `"${clipboard.name}" already exists in destination. Keep both by renaming the copy?`,
+      confirm: 'Keep both (rename)',
+      cancel: 'Cancel',
+      danger: false,
+    });
+    if (!choice) return;
+    targetName = generateCopyName(clipboard.name, existingNames);
+  }
+
+  try {
+    if (clipboard.action === 'cut') {
+      await api('/move', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: clipboard.type,
+          from: clipboard.path,
+          to: targetFolder,
+          name: targetName,
+        }),
+      });
+      toast(`Moved "${clipboard.name}" here`);
+      setClipboard(null);
+    } else {
+      await api('/copy', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: clipboard.type,
+          from: clipboard.path,
+          to: targetFolder,
+          name: targetName,
+        }),
+      });
+      toast(`Pasted "${targetName}"`);
+    }
+    changed();
+  } catch (err) {
+    toastError(err.message);
+  }
+}
+
+async function openMoveDialog(type, name) {
+  const sourcePath = [...state.path, name];
+  let selectedFolder = null;
+  let allFolders = [];
+
+  const m = modal({
+    title: `Move ${type} "${name}"`,
+    sub: `Current location: ${state.path.length ? state.path.join(' / ') : 'Root'}`,
+    wide: false,
+    body: `
+      <div class="move-dialog">
+        <p class="dialog-instruction">Select destination folder:</p>
+        <div class="tree-search-wrap">
+          <input type="search" id="moveSearch" class="input" placeholder="Filter folders…" autocomplete="off">
+        </div>
+        <div class="folder-picker" id="folderPicker">
+          <div class="spin" style="padding:20px;text-align:center">Loading folders…</div>
+        </div>
+        <div class="move-dialog-extra">
+          <button class="btn small" id="moveNewFolderBtn">${icon('folderPlus')} New subfolder here</button>
+        </div>
+      </div>
+    `,
+    foot: `
+      <button class="btn" id="moveCutBtn" title="Cut to clipboard and paste manually">${icon('cut')} Cut to clipboard</button>
+      <div style="flex:1"></div>
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn" id="moveCopyBtn" title="Make a copy in the selected folder" disabled>${icon('copy')} Copy here</button>
+      <button class="btn primary" id="moveConfirmBtn" disabled>${icon('move')} Move here</button>
+    `,
+  });
+
+  const pickerEl = $('#folderPicker', m.el);
+  const searchEl = $('#moveSearch', m.el);
+  const confirmBtn = $('#moveConfirmBtn', m.el);
+  const copyBtn = $('#moveCopyBtn', m.el);
+  const cutBtn = $('#moveCutBtn', m.el);
+  const newFolderBtn = $('#moveNewFolderBtn', m.el);
+
+  cutBtn.onclick = () => {
+    m.close();
+    cutItem(type, name);
+  };
+
+  const renderPicker = () => {
+    const q = searchEl.value.trim().toLowerCase();
+    const filtered = allFolders.filter(f => !q || (f.path.join('/') || 'root').toLowerCase().includes(q));
+
+    if (!filtered.length) {
+      pickerEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted)">No matching folders found</div>';
+      return;
+    }
+
+    pickerEl.innerHTML = filtered.map(f => {
+      const isRoot = f.path.length === 0;
+      const isCurrentParent = (f.path.length === state.path.length && f.path.every((p, i) => p === state.path[i]));
+      const isSelfOrDescendant = (type === 'folder' && f.path.length >= sourcePath.length && sourcePath.every((p, i) => f.path[i] === p));
+      const isFileAtRoot = (type === 'file' && isRoot);
+      const disabled = isSelfOrDescendant || isFileAtRoot || isCurrentParent;
+
+      let badge = '';
+      if (isCurrentParent) badge = '<span class="folder-picker-badge">Current</span>';
+      else if (isSelfOrDescendant) badge = '<span class="folder-picker-badge">Cannot move here</span>';
+      else if (isFileAtRoot) badge = '<span class="folder-picker-badge">Folders only</span>';
+
+      const isSelected = selectedFolder !== null && selectedFolder.length === f.path.length && selectedFolder.every((p, i) => p === f.path[i]);
+      const indent = Math.max(0, f.depth) * 16 + 8;
+
+      return `
+        <div class="folder-picker-item${isSelected ? ' selected' : ''}${disabled ? ' disabled' : ''}"
+             data-fpath="${esc(JSON.stringify(f.path))}"
+             style="padding-left: ${indent}px"
+             ${disabled ? 'data-disabled="true"' : ''}>
+          ${icon(isRoot ? 'home' : 'folder')}
+          <span class="folder-picker-name" title="${esc(f.name)}">${esc(f.name)}</span>
+          ${badge}
+        </div>
+      `;
+    }).join('');
+
+    pickerEl.querySelectorAll('.folder-picker-item:not([data-disabled="true"])').forEach(itemEl => {
+      itemEl.onclick = () => {
+        try {
+          selectedFolder = JSON.parse(itemEl.dataset.fpath);
+        } catch { return; }
+        confirmBtn.disabled = false;
+        copyBtn.disabled = false;
+        renderPicker();
+      };
+    });
+  };
+
+  searchEl.addEventListener('input', renderPicker);
+
+  newFolderBtn.onclick = async () => {
+    const parentPath = selectedFolder !== null ? selectedFolder : state.path;
+    const parentName = parentPath.length ? parentPath.at(-1) : 'Root';
+    const folderName = await prompt({ title: `New folder in ${parentName}`, label: 'Folder name', confirm: 'Create' });
+    if (!folderName) return;
+    try {
+      await api(folderApi(parentPath), { method: 'POST', body: JSON.stringify({ name: folderName }) });
+      toast('Folder created');
+      const treeRes = await api('/tree');
+      allFolders = treeRes.folders || [];
+      selectedFolder = [...parentPath, folderName];
+      confirmBtn.disabled = false;
+      copyBtn.disabled = false;
+      renderPicker();
+    } catch (e) {
+      toastError(e.message);
+    }
+  };
+
+  confirmBtn.onclick = async () => {
+    if (!selectedFolder) return;
+    confirmBtn.disabled = true;
+    try {
+      await api('/move', {
+        method: 'POST',
+        body: JSON.stringify({
+          type,
+          from: sourcePath,
+          to: selectedFolder,
+          name,
+        }),
+      });
+      m.close();
+      toast(`Moved "${name}" to ${selectedFolder.length ? selectedFolder.at(-1) : 'Root'}`);
+      changed();
+    } catch (err) {
+      confirmBtn.disabled = false;
+      toastError(err.message);
+    }
+  };
+
+  copyBtn.onclick = async () => {
+    if (!selectedFolder) return;
+    copyBtn.disabled = true;
+    try {
+      await api('/copy', {
+        method: 'POST',
+        body: JSON.stringify({
+          type,
+          from: sourcePath,
+          to: selectedFolder,
+          name,
+        }),
+      });
+      m.close();
+      toast(`Copied "${name}" to ${selectedFolder.length ? selectedFolder.at(-1) : 'Root'}`);
+      changed();
+    } catch (err) {
+      copyBtn.disabled = false;
+      toastError(err.message);
+    }
+  };
+
+  try {
+    const treeRes = await api('/tree');
+    allFolders = treeRes.folders || [];
+    renderPicker();
+  } catch (err) {
+    pickerEl.innerHTML = `<div style="padding:16px;text-align:center;color:var(--danger)">Failed to load folders: ${esc(err.message)}</div>`;
+  }
+}
+
+/* ---------- Context Menu ---------- */
+function closeContextMenu() {
+  const m = $('#contextMenu');
+  if (m) m.remove();
+}
+
+function showContextMenu(e, item = null) {
+  if (state.view === 'trash') return;
+  e.preventDefault();
+  closeContextMenu();
+  const menu = document.createElement('div');
+  menu.className = 'context-menu';
+  menu.id = 'contextMenu';
+
+  if (item) selectedItem = item;
+
+  let itemsHtml = '';
+  if (item?.type === 'file') {
+    itemsHtml = `
+      <button class="context-menu-item" data-cact="preview">${icon('code')} Open preview</button>
+      <button class="context-menu-item" data-cact="download">${icon('download')} Download</button>
+      ${perms.canEdit ? `
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item" data-cact="copy">${icon('copy')} Copy <span class="context-menu-shortcut">Ctrl+C</span></button>
+        <button class="context-menu-item" data-cact="duplicate">${icon('copy')} Duplicate <span class="context-menu-shortcut">Ctrl+D</span></button>
+        <button class="context-menu-item" data-cact="cut">${icon('cut')} Cut / Move <span class="context-menu-shortcut">Ctrl+X</span></button>
+        <button class="context-menu-item" data-cact="move">${icon('move')} Move to…</button>
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item" data-cact="rename">${icon('edit')} Rename <span class="context-menu-shortcut">F2</span></button>
+        <button class="context-menu-item danger" data-cact="delete">${icon('trash')} Move to Trash <span class="context-menu-shortcut">Del</span></button>
+      ` : ''}
+    `;
+  } else if (item?.type === 'folder') {
+    itemsHtml = `
+      <button class="context-menu-item" data-cact="open">${icon('folder')} Open folder</button>
+      <button class="context-menu-item" data-cact="zip">${icon('zip')} Download ZIP</button>
+      ${perms.canEdit ? `
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item" data-cact="copy">${icon('copy')} Copy <span class="context-menu-shortcut">Ctrl+C</span></button>
+        <button class="context-menu-item" data-cact="duplicate">${icon('copy')} Duplicate <span class="context-menu-shortcut">Ctrl+D</span></button>
+        <button class="context-menu-item" data-cact="cut">${icon('cut')} Cut / Move <span class="context-menu-shortcut">Ctrl+X</span></button>
+        <button class="context-menu-item" data-cact="move">${icon('move')} Move to…</button>
+        ${clipboard ? `<button class="context-menu-item" data-cact="pasteInto">${icon('paste')} Paste inside "${esc(item.name)}"</button>` : ''}
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item" data-cact="rename">${icon('edit')} Rename <span class="context-menu-shortcut">F2</span></button>
+        <button class="context-menu-item danger" data-cact="delete">${icon('trash')} Move to Trash <span class="context-menu-shortcut">Del</span></button>
+      ` : ''}
+    `;
+  } else {
+    itemsHtml = `
+      ${perms.canEdit ? `
+        <button class="context-menu-item" data-cact="paste" ${!clipboard ? 'disabled' : ''}>
+          ${icon('paste')} Paste ${clipboard ? `"${esc(clipboard.name)}"` : ''} <span class="context-menu-shortcut">Ctrl+V</span>
+        </button>
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item" data-cact="newFolder">${icon('folderPlus')} New folder</button>
+        ${!state.path.length ? '' : `
+          <button class="context-menu-item" data-cact="uploadFiles">${icon('file')} Upload files</button>
+          <button class="context-menu-item" data-cact="uploadFolder">${icon('upload')} Upload folder</button>
+          <button class="context-menu-item" data-cact="newDocFile">${icon('word')} New Word doc</button>
+          <button class="context-menu-item" data-cact="newDoc">${icon('code')} New code / text file</button>
+        `}
+      ` : ''}
+    `;
+  }
+
+  menu.innerHTML = itemsHtml;
+  document.body.appendChild(menu);
+
+  const rect = menu.getBoundingClientRect();
+  const x = Math.min(e.clientX, window.innerWidth - rect.width - 8);
+  const y = Math.min(e.clientY, window.innerHeight - rect.height - 8);
+  menu.style.left = `${Math.max(8, x)}px`;
+  menu.style.top = `${Math.max(8, y)}px`;
+
+  menu.querySelectorAll('[data-cact]').forEach(btn => {
+    btn.onclick = (ev) => {
+      ev.stopPropagation();
+      closeContextMenu();
+      handleContextAction(btn.dataset.cact, item);
+    };
+  });
+}
+
+function handleContextAction(act, item) {
+  if (act === 'copy' && item) copyItem(item.type, item.name);
+  else if (act === 'duplicate' && item) duplicateItem(item.type, item.name);
+  else if (act === 'cut' && item) cutItem(item.type, item.name);
+  else if (act === 'move' && item) openMoveDialog(item.type, item.name);
+  else if (act === 'paste') pasteItem();
+  else if (act === 'pasteInto' && item) pasteItem([...state.path, item.name]);
+  else if (act === 'preview' && item) openPreview(item.name);
+  else if (act === 'download' && item) {
+    location.href = `${fileUrl([...state.path, item.name])}?download`;
+  } else if (act === 'open' && item) {
+    location.hash = dirHash([...state.path, item.name]);
+  } else if (act === 'zip' && item) {
+    location.href = zipUrl([...state.path, item.name]);
+  } else if (act === 'rename' && item) {
+    if (item.type === 'folder') renameFolder(item.name);
+    else renameFile(item.name);
+  } else if (act === 'delete' && item) {
+    if (item.type === 'folder') moveToTrash(folderApi([...state.path, item.name]), item.name);
+    else moveToTrash(`/files/${joinPath([...state.path, item.name])}`, item.name);
+  } else if (act === 'newFolder') createFolder();
+  else if (act === 'uploadFiles') fileInput.click();
+  else if (act === 'uploadFolder') dirInput.click();
+  else if (act === 'newDocFile') openDocEditor();
+  else if (act === 'newDoc') openEditor();
+}
+
+async function renameFolder(old) {
+  const name = await prompt({ title: 'Rename folder', label: 'Folder name', value: old });
+  if (!name || name === old) return;
+  try {
+    await api(folderApi([...state.path, old]), { method: 'PATCH', body: JSON.stringify({ name }) });
+    toast('Folder renamed');
+    changed();
+  } catch (err) {
+    toastError(err.message);
+  }
+}
+
+document.addEventListener('click', () => closeContextMenu());
+document.addEventListener('contextmenu', (e) => {
+  if (!e.defaultPrevented) closeContextMenu();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeContextMenu();
+    return;
+  }
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable || e.target.closest('.CodeMirror') || e.target.closest('.ql-editor')) {
+    return;
+  }
+
+  const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+  if (isCmdOrCtrl && e.key.toLowerCase() === 'c' && selectedItem) {
+    e.preventDefault();
+    copyItem(selectedItem.type, selectedItem.name);
+  } else if (isCmdOrCtrl && e.key.toLowerCase() === 'd' && selectedItem && perms.canEdit) {
+    e.preventDefault();
+    duplicateItem(selectedItem.type, selectedItem.name);
+  } else if (isCmdOrCtrl && e.key.toLowerCase() === 'x' && selectedItem) {
+    e.preventDefault();
+    cutItem(selectedItem.type, selectedItem.name);
+  } else if (isCmdOrCtrl && e.key.toLowerCase() === 'v') {
+    e.preventDefault();
+    pasteItem();
+  } else if (e.key === 'F2' && selectedItem) {
+    e.preventDefault();
+    if (selectedItem.type === 'folder') renameFolder(selectedItem.name);
+    else renameFile(selectedItem.name);
+  } else if (e.key === 'Delete' && selectedItem && perms.canEdit) {
+    e.preventDefault();
+    if (selectedItem.type === 'folder') moveToTrash(folderApi([...state.path, selectedItem.name]), selectedItem.name);
+    else moveToTrash(`/files/${joinPath([...state.path, selectedItem.name])}`, selectedItem.name);
+  }
+});
+
 /* ---------- Render ---------- */
 function render() {
   if (state.view === 'trash') return renderTrash();
@@ -350,8 +862,8 @@ function render() {
 
   const crumbs = isRoot ? '' : `
     <nav class="crumbs">
-      <a href="#/" title="All folders">${icon('home')}</a>
-      ${path.slice(0, -1).map((name, i) => `${icon('chevron')}<a href="${dirHash(path.slice(0, i + 1))}">${esc(name)}</a>`).join('')}
+      <a href="#/" title="All folders" data-crumb-path="[]">${icon('home')}</a>
+      ${path.slice(0, -1).map((name, i) => `${icon('chevron')}<a href="${dirHash(path.slice(0, i + 1))}" data-crumb-path="${esc(JSON.stringify(path.slice(0, i + 1)))}">${esc(name)}</a>`).join('')}
       ${icon('chevron')}
     </nav>`;
 
@@ -360,9 +872,15 @@ function render() {
        data.files.length && fmtSize(data.files.reduce((s, f) => s + f.size, 0))].filter(Boolean).join(' · ') || 'Empty';
 
   const zipBtn = !isRoot && total ? `<a class="btn" href="${zipUrl(path)}" title="Download this folder as a .zip">${icon('zip')} Download ZIP</a>` : '';
+  const pasteBtn = edit ? `
+    <button class="btn${clipboard ? ' accent' : ''}" data-act="paste" title="${clipboard ? `Paste "${esc(clipboard.name)}" (${clipboard.action === 'cut' ? 'move' : 'copy'}) here` : 'Paste (clipboard is empty — copy or cut a file or folder first)'}">
+      ${icon('paste')} Paste${clipboard ? ` (${esc(clipboard.name.length > 14 ? clipboard.name.slice(0, 12) + '…' : clipboard.name)})` : ''}
+    </button>` : '';
+
   const actions = !edit ? zipBtn : isRoot
-    ? `<button class="btn primary" data-act="newFolder">${icon('plus')} New folder</button>`
+    ? `${pasteBtn} <button class="btn primary" data-act="newFolder">${icon('plus')} New folder</button>`
     : `${zipBtn}
+       ${pasteBtn}
        <button class="btn" data-act="newFolder">${icon('folderPlus')} New folder</button>
        <div class="menu-wrap">
          <button class="btn" data-act="uploadMenu">${icon('upload')} Upload ${icon('down')}</button>
@@ -395,6 +913,7 @@ function render() {
         <p>Write a snippet, upload files or a whole folder, or create a Word document.<br>You can also drag &amp; drop files and folders anywhere.</p>
         <div class="actions">
           <button class="btn" data-act="newFolder">${icon('folderPlus')} New folder</button>
+          ${clipboard ? `<button class="btn accent" data-act="paste">${icon('paste')} Paste ${esc(clipboard.name)}</button>` : ''}
           <button class="btn" data-act="uploadFiles">${icon('upload')} Upload</button>
           <button class="btn" data-act="newDocFile">${icon('word')} Word doc</button>
           <button class="btn primary" data-act="newDoc">${icon('code')} Code / doc</button>
@@ -406,8 +925,15 @@ function render() {
       ${folders.length ? `
         ${showLabels ? '<div class="section-label">Folders</div>' : ''}
         <div class="grid${isRoot ? '' : ' compact'}">
-          ${folders.map(f => `
-            <a class="folder" href="${dirHash([...path, f.name])}">
+          ${folders.map(f => {
+            const isCut = clipboard?.action === 'cut' && clipboard.type === 'folder' &&
+              clipboard.path.length === path.length + 1 && clipboard.path.at(-1) === f.name &&
+              path.every((p, i) => clipboard.path[i] === p);
+            const isCopied = clipboard?.action === 'copy' && clipboard.type === 'folder' &&
+              clipboard.path.length === path.length + 1 && clipboard.path.at(-1) === f.name &&
+              path.every((p, i) => clipboard.path[i] === p);
+            return `
+            <a class="folder${isCut ? ' is-cut' : ''}${isCopied ? ' is-copied' : ''}" href="${dirHash([...path, f.name])}" data-folder-name="${esc(f.name)}" ${edit ? 'draggable="true"' : ''}>
               <div class="folder-icon">${icon('folder')}</div>
               <div class="folder-text">
                 <div class="folder-name" title="${esc(f.name)}">${esc(f.name)}</div>
@@ -416,27 +942,40 @@ function render() {
               <div class="tools${edit ? '' : ' one'}">
                 <span class="icon-btn" data-zip="${esc(f.name)}" title="Download as ZIP">${icon('download')}</span>
                 ${edit ? `
-                <button class="icon-btn" data-rename-folder="${esc(f.name)}" title="Rename">${icon('edit')}</button>
-                <button class="icon-btn danger" data-delete-folder="${esc(f.name)}" title="Move to Trash">${icon('trash')}</button>` : ''}
+                <button class="icon-btn" data-copy-folder="${esc(f.name)}" title="Copy folder (Ctrl+C)">${icon('copy')}</button>
+                <button class="icon-btn" data-move-folder="${esc(f.name)}" title="Move folder (Ctrl+X)">${icon('move')}</button>
+                <button class="icon-btn" data-rename-folder="${esc(f.name)}" title="Rename (F2)">${icon('edit')}</button>
+                <button class="icon-btn danger" data-delete-folder="${esc(f.name)}" title="Move to Trash (Del)">${icon('trash')}</button>` : ''}
               </div>
-            </a>`).join('')}
+            </a>`;
+          }).join('')}
           ${isRoot && !q && edit ? `<button class="folder new" data-act="newFolder">${icon('plus')}<span>New folder</span></button>` : ''}
         </div>` : ''}
       ${files.length ? `
         ${showLabels ? '<div class="section-label">Files</div>' : ''}
         <div class="list">
-          ${files.map(f => `
-            <div class="row" data-open="${esc(f.name)}">
+          ${files.map(f => {
+            const isCut = clipboard?.action === 'cut' && clipboard.type === 'file' &&
+              clipboard.path.length === path.length + 1 && clipboard.path.at(-1) === f.name &&
+              path.every((p, i) => clipboard.path[i] === p);
+            const isCopied = clipboard?.action === 'copy' && clipboard.type === 'file' &&
+              clipboard.path.length === path.length + 1 && clipboard.path.at(-1) === f.name &&
+              path.every((p, i) => clipboard.path[i] === p);
+            return `
+            <div class="row${isCut ? ' is-cut' : ''}${isCopied ? ' is-copied' : ''}" data-open="${esc(f.name)}" data-file-name="${esc(f.name)}" ${edit ? 'draggable="true"' : ''}>
               <div class="name">${fileIcon(f.name)}<span title="${esc(f.name)}">${esc(f.name)}</span></div>
               <div class="meta">${fmtSize(f.size)}</div>
               <div class="meta">${fmtDate(f.updated)}</div>
               <div class="tools">
                 <a class="icon-btn" href="${fileUrl([...path, f.name])}?download" title="Download" data-stop>${icon('download')}</a>
                 ${edit ? `
-                <button class="icon-btn" data-rename-file="${esc(f.name)}" title="Rename">${icon('edit')}</button>
-                <button class="icon-btn danger" data-delete-file="${esc(f.name)}" title="Move to Trash">${icon('trash')}</button>` : ''}
+                <button class="icon-btn" data-copy-file="${esc(f.name)}" title="Copy file (Ctrl+C)">${icon('copy')}</button>
+                <button class="icon-btn" data-move-file="${esc(f.name)}" title="Move file (Ctrl+X)">${icon('move')}</button>
+                <button class="icon-btn" data-rename-file="${esc(f.name)}" title="Rename (F2)">${icon('edit')}</button>
+                <button class="icon-btn danger" data-delete-file="${esc(f.name)}" title="Move to Trash (Del)">${icon('trash')}</button>` : ''}
               </div>
-            </div>`).join('')}
+            </div>`;
+          }).join('')}
         </div>` : ''}
       ${q && !folders.length && !files.length ? '<div class="spin">Nothing matches your search.</div>' : ''}
       ${!isRoot && edit ? '<div class="hint">Tip: drag &amp; drop files or whole folders anywhere on this page to upload.</div>' : ''}`;
@@ -453,6 +992,7 @@ function render() {
     </div>
     ${content}`;
 
+  renderClipboardBar();
   bindActions();
 }
 
@@ -465,6 +1005,7 @@ function bindActions() {
     newDocFile: () => { closeAllMenus(); openDocEditor(); },
     uploadFiles: () => { closeAllMenus(); fileInput.click(); },
     uploadFolder: () => { closeAllMenus(); dirInput.click(); },
+    paste: () => { closeAllMenus(); pasteItem(); },
     uploadMenu: (e) => {
       e.stopPropagation();
       const m = e.currentTarget.nextElementSibling;
@@ -489,23 +1030,172 @@ function bindActions() {
     e.preventDefault(); e.stopPropagation();
     location.href = zipUrl([...path, b.dataset.zip]);
   });
+  app.querySelectorAll('[data-copy-folder]').forEach(b => b.onclick = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    copyItem('folder', b.dataset.copyFolder);
+  });
+  app.querySelectorAll('[data-move-folder]').forEach(b => b.onclick = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    openMoveDialog('folder', b.dataset.moveFolder);
+  });
   app.querySelectorAll('[data-rename-folder]').forEach(b => b.onclick = async (e) => {
     e.preventDefault(); e.stopPropagation();
-    const old = b.dataset.renameFolder;
-    const name = await prompt({ title: 'Rename folder', label: 'Folder name', value: old });
-    if (!name || name === old) return;
-    try { await api(folderApi([...path, old]), { method: 'PATCH', body: JSON.stringify({ name }) }); toast('Folder renamed'); changed(); }
-    catch (err) { toastError(err.message); }
+    renameFolder(b.dataset.renameFolder);
   });
   app.querySelectorAll('[data-delete-folder]').forEach(b => b.onclick = (e) => {
     e.preventDefault(); e.stopPropagation();
     moveToTrash(folderApi([...path, b.dataset.deleteFolder]), b.dataset.deleteFolder);
+  });
+  app.querySelectorAll('[data-copy-file]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
+    copyItem('file', b.dataset.copyFile);
+  });
+  app.querySelectorAll('[data-move-file]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
+    openMoveDialog('file', b.dataset.moveFile);
   });
   app.querySelectorAll('[data-rename-file]').forEach(b => b.onclick = (e) => { e.stopPropagation(); renameFile(b.dataset.renameFile); });
   app.querySelectorAll('[data-delete-file]').forEach(b => b.onclick = (e) => {
     e.stopPropagation();
     moveToTrash(`/files/${joinPath([...path, b.dataset.deleteFile])}`, b.dataset.deleteFile);
   });
+
+  // Context menu bindings
+  app.querySelectorAll('[data-folder-name]').forEach(fEl => {
+    fEl.addEventListener('contextmenu', (e) => showContextMenu(e, { type: 'folder', name: fEl.dataset.folderName }));
+    fEl.addEventListener('click', () => { selectedItem = { type: 'folder', name: fEl.dataset.folderName }; });
+  });
+
+  app.querySelectorAll('[data-file-name]').forEach(rEl => {
+    rEl.addEventListener('contextmenu', (e) => showContextMenu(e, { type: 'file', name: rEl.dataset.fileName }));
+    rEl.addEventListener('click', () => { selectedItem = { type: 'file', name: rEl.dataset.fileName }; });
+  });
+
+  // Blank area context menu
+  const gridOrList = app.querySelector('.grid') || app.querySelector('.list') || app.querySelector('.empty');
+  if (gridOrList) {
+    gridOrList.addEventListener('contextmenu', (e) => {
+      if (e.target === gridOrList || e.target.closest('.empty')) {
+        showContextMenu(e, null);
+      }
+    });
+  }
+
+  // In-app Drag and Drop to move files & folders
+  if (perms.canEdit) {
+    // Draggable files
+    app.querySelectorAll('.row[data-file-name]').forEach(row => {
+      row.addEventListener('dragstart', (e) => {
+        const fileName = row.dataset.fileName;
+        e.dataTransfer.setData('application/x-devlocker-item', JSON.stringify({
+          type: 'file',
+          name: fileName,
+          path: [...path, fileName],
+        }));
+        e.dataTransfer.effectAllowed = 'move';
+        row.classList.add('is-dragging');
+      });
+      row.addEventListener('dragend', () => row.classList.remove('is-dragging'));
+    });
+
+    // Draggable folders & drop targets
+    app.querySelectorAll('.folder[data-folder-name]').forEach(fEl => {
+      fEl.addEventListener('dragstart', (e) => {
+        const folderName = fEl.dataset.folderName;
+        e.dataTransfer.setData('application/x-devlocker-item', JSON.stringify({
+          type: 'folder',
+          name: folderName,
+          path: [...path, folderName],
+        }));
+        e.dataTransfer.effectAllowed = 'move';
+        fEl.classList.add('is-dragging');
+      });
+      fEl.addEventListener('dragend', () => fEl.classList.remove('is-dragging'));
+
+      fEl.addEventListener('dragover', (e) => {
+        if (e.dataTransfer.types.includes('application/x-devlocker-item')) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = 'move';
+          fEl.classList.add('drag-over');
+        }
+      });
+      fEl.addEventListener('dragleave', (e) => {
+        if (!fEl.contains(e.relatedTarget)) {
+          fEl.classList.remove('drag-over');
+        }
+      });
+      fEl.addEventListener('drop', async (e) => {
+        const raw = e.dataTransfer.getData('application/x-devlocker-item');
+        if (!raw) return;
+        e.preventDefault();
+        e.stopPropagation();
+        fEl.classList.remove('drag-over');
+        try {
+          const item = JSON.parse(raw);
+          const targetFolder = [...path, fEl.dataset.folderName];
+          if (item.type === 'folder' && targetFolder.length >= item.path.length &&
+              item.path.every((p, i) => targetFolder[i] === p)) {
+            toastError('Cannot move folder into itself or its subfolder');
+            return;
+          }
+          await api('/move', {
+            method: 'POST',
+            body: JSON.stringify({ type: item.type, from: item.path, to: targetFolder, name: item.name }),
+          });
+          toast(`Moved "${item.name}" into "${fEl.dataset.folderName}"`);
+          changed();
+        } catch (err) {
+          toastError(err.message);
+        }
+      });
+    });
+
+    // Drop target on breadcrumbs (moving up)
+    app.querySelectorAll('.crumbs a[data-crumb-path]').forEach(crumb => {
+      crumb.addEventListener('dragover', (e) => {
+        if (e.dataTransfer.types.includes('application/x-devlocker-item')) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = 'move';
+          crumb.classList.add('drag-over');
+        }
+      });
+      crumb.addEventListener('dragleave', (e) => {
+        if (!crumb.contains(e.relatedTarget)) {
+          crumb.classList.remove('drag-over');
+        }
+      });
+      crumb.addEventListener('drop', async (e) => {
+        const raw = e.dataTransfer.getData('application/x-devlocker-item');
+        if (!raw) return;
+        e.preventDefault();
+        e.stopPropagation();
+        crumb.classList.remove('drag-over');
+        try {
+          const item = JSON.parse(raw);
+          const targetFolder = JSON.parse(crumb.dataset.crumbPath);
+          if (item.type === 'file' && targetFolder.length === 0) {
+            toastError('Files cannot be moved to root');
+            return;
+          }
+          if (item.type === 'folder' && targetFolder.length >= item.path.length &&
+              item.path.every((p, i) => targetFolder[i] === p)) {
+            toastError('Cannot move folder into itself');
+            return;
+          }
+          await api('/move', {
+            method: 'POST',
+            body: JSON.stringify({ type: item.type, from: item.path, to: targetFolder, name: item.name }),
+          });
+          toast(`Moved "${item.name}"`);
+          changed();
+        } catch (err) {
+          toastError(err.message);
+        }
+      });
+    });
+  }
 }
 document.addEventListener('click', () => { app.querySelectorAll('.menu').forEach(m => m.hidden = true); });
 
@@ -2589,7 +3279,11 @@ async function openPreview(name) {
       ${textual ? `<button class="icon-btn" data-copy title="Copy contents">${icon('copy')}</button>` : ''}
       ${(textual || isDoc) && edit ? `<button class="icon-btn" data-edit title="Edit in browser">${icon('edit')}</button>` : ''}
       <button class="icon-btn" data-link title="Copy download link">${icon('link')}</button>
-      ${edit ? `<button class="icon-btn danger" data-del title="Move to Trash">${icon('trash')}</button>` : ''}
+      ${edit ? `
+        <button class="icon-btn" data-copy-item title="Copy file (Ctrl+C)">${icon('copy')}</button>
+        <button class="icon-btn" data-move-item title="Move file (Ctrl+X)">${icon('move')}</button>
+        <button class="icon-btn danger" data-del title="Move to Trash">${icon('trash')}</button>
+      ` : ''}
       <a class="btn primary" href="${url}?download" style="margin:0 4px">${icon('download')} Download</a>`,
     body: `<div class="preview-body"><div class="spin">Loading preview…</div></div>`,
   });
@@ -2597,7 +3291,11 @@ async function openPreview(name) {
   let text = null;
 
   $('[data-link]', m.el).onclick = () => copy(`${location.origin}${url}?download`, 'Download link copied');
-  if (edit) $('[data-del]', m.el).onclick = async () => { if (await moveToTrash(`/files/${joinPath(parts)}`, name)) m.close(); };
+  if (edit) {
+    $('[data-copy-item]', m.el)?.addEventListener('click', () => copyItem('file', name));
+    $('[data-move-item]', m.el)?.addEventListener('click', () => { m.close(); openMoveDialog('file', name); });
+    $('[data-del]', m.el).onclick = async () => { if (await moveToTrash(`/files/${joinPath(parts)}`, name)) m.close(); };
+  }
 
   try {
     if (k === 'img') body.innerHTML = `<div class="preview-center"><img src="${url}" alt="${esc(name)}"></div>`;

@@ -80,6 +80,21 @@ module.exports = function supabaseBackend({ url, key, bucket }) {
   const moveKey = (from, to) =>
     call('POST', '/object/move', { json: { bucketId: bucket, sourceKey: from, destinationKey: to } });
 
+  const copyKey = async (from, to) => {
+    try {
+      return await call('POST', '/object/copy', { json: { bucketId: bucket, sourceKey: from, destinationKey: to } });
+    } catch (e) {
+      const fromParts = from.split('/').map(decodeName);
+      const toParts = to.split('/').map(decodeName);
+      const res = await call('GET', `/object/${bucket}/${toUrlPath(fromParts)}`, { raw: true });
+      await upload(toParts, Readable.toWeb(Readable.fromWeb(res.body)), {
+        overwrite: true,
+        length: Number(res.headers.get('content-length')) || undefined,
+        contentType: res.headers.get('content-type') || 'application/octet-stream',
+      });
+    }
+  };
+
   async function removeKeys(keys) {
     for (let i = 0; i < keys.length; i += 1000) {
       await call('DELETE', `/object/${bucket}`, { json: { prefixes: keys.slice(i, i + 1000) } });
@@ -136,6 +151,19 @@ module.exports = function supabaseBackend({ url, key, bucket }) {
       if (entry.id) return moveKey(toKey(from), toKey(to));
       const fromKey = toKey(from), destKey = toKey(to);
       for (const k of await allKeys(from)) await moveKey(k, destKey + k.slice(fromKey.length));
+    },
+
+    async copy(from, to) {
+      const entry = await entryIn(from);
+      if (!entry) throw httpError(404, 'Not found');
+      if (entry.id) return copyKey(toKey(from), toKey(to));
+      const fromKey = toKey(from), destKey = toKey(to);
+      const keys = await allKeys(from);
+      if (keys.length === 0) {
+        await upload([...to, KEEP], '', { overwrite: true, length: 0, contentType: 'text/plain' });
+      } else {
+        for (const k of keys) await copyKey(k, destKey + k.slice(fromKey.length));
+      }
     },
 
     deleteFolder: async (dir) => removeKeys(await allKeys(dir)),

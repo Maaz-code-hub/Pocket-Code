@@ -118,13 +118,20 @@ async function handleFolders(req, res, parts) {
   }
   if (!parts.length) throw httpError(405, 'Method not allowed');
   if (m === 'PATCH') {
-    const { name } = await readJson(req);
-    if (!validName(name)) throw httpError(400, 'Invalid folder name');
-    if (name === parts.at(-1)) return send(res, 200, { ok: true });
-    const target = [...parts.slice(0, -1), name];
+    const body = await readJson(req);
+    const targetParent = Array.isArray(body.destination) ? body.destination : parts.slice(0, -1);
+    const targetName = (body.name && typeof body.name === 'string') ? body.name.trim() : parts.at(-1);
+    if (!validName(targetName)) throw httpError(400, 'Invalid folder name');
+    const target = [...targetParent, targetName];
+    checkPath(target, 'folder');
+    if (target.length === parts.length && target.every((p, i) => p === parts[i])) return send(res, 200, { ok: true, path: target });
+    if (targetParent.length >= parts.length && parts.every((p, i) => targetParent[i] === p)) {
+      throw httpError(400, 'Cannot move a folder into itself or its subfolder');
+    }
+    if (targetParent.length && !(await storage.folderExists(targetParent))) throw httpError(404, 'Destination folder not found');
     if (await storage.exists(target)) throw httpError(409, 'A file or folder with that name already exists');
     await storage.move(parts, target);
-    return send(res, 200, { ok: true });
+    return send(res, 200, { ok: true, path: target });
   }
   if (m === 'DELETE') return send(res, 200, { ok: true, trashId: await storage.trash.put(parts) });
   throw httpError(405, 'Method not allowed');
@@ -175,12 +182,18 @@ async function handleFiles(req, res, parts, url) {
   }
 
   if (m === 'PATCH') {
-    const { name } = await readJson(req);
-    if (!validName(name)) throw httpError(400, 'Invalid file name');
-    if (name === file) return send(res, 200, { ok: true });
-    if (await storage.exists([...parent, name])) throw httpError(409, 'A file or folder with that name already exists');
-    await storage.move(parts, [...parent, name]);
-    return send(res, 200, { ok: true });
+    const body = await readJson(req);
+    const targetParent = Array.isArray(body.destination) ? body.destination : parent;
+    const targetName = (body.name && typeof body.name === 'string') ? body.name.trim() : file;
+    if (!validName(targetName)) throw httpError(400, 'Invalid file name');
+    if (targetParent.length < 1) throw httpError(400, 'Files must be inside a folder');
+    const target = [...targetParent, targetName];
+    checkPath(target, 'file');
+    if (target.length === parts.length && target.every((p, i) => p === parts[i])) return send(res, 200, { ok: true, path: target });
+    if (!(await storage.folderExists(targetParent))) throw httpError(404, 'Destination folder not found');
+    if (await storage.exists(target)) throw httpError(409, 'A file or folder with that name already exists');
+    await storage.move(parts, target);
+    return send(res, 200, { ok: true, path: target });
   }
 
   if (m === 'DELETE') return send(res, 200, { ok: true, trashId: await storage.trash.put(parts) });
@@ -223,6 +236,99 @@ async function handleTrash(req, res, parts) {
     if (m === 'DELETE' && !action) { await storage.trash.remove(id); return send(res, 200, { ok: true }); }
   }
   throw httpError(405, 'Method not allowed');
+}
+
+async function handleTree(req, res) {
+  if (req.method !== 'GET') throw httpError(405, 'Method not allowed');
+  const folders = [{ path: [], name: 'Root', depth: 0 }];
+  for await (const e of storage.walk([])) {
+    if (e.type === 'folder') {
+      folders.push({ path: e.rel, name: e.rel.at(-1), depth: e.rel.length });
+    }
+  }
+  return send(res, 200, { folders });
+}
+
+async function handleMove(req, res) {
+  if (req.method !== 'POST') throw httpError(405, 'Method not allowed');
+  const body = await readJson(req);
+  const { type, from, to, name } = body;
+  if (type !== 'file' && type !== 'folder') throw httpError(400, 'Invalid type');
+  if (!Array.isArray(from) || !Array.isArray(to)) throw httpError(400, 'Invalid path');
+  checkPath(from, type);
+  checkPath(to, 'folder');
+
+  const targetName = (name && typeof name === 'string' && name.trim()) ? name.trim() : from.at(-1);
+  if (!validName(targetName)) throw httpError(400, `Invalid ${type} name`);
+  const target = [...to, targetName];
+  checkPath(target, type);
+
+  if (type === 'file') {
+    if (from.length < 2) throw httpError(400, 'Files must be inside a folder');
+    if (to.length < 1) throw httpError(400, 'Files must be placed inside a folder');
+    if (!(await storage.fileExists(from))) throw httpError(404, 'File not found');
+    if (!(await storage.folderExists(to))) throw httpError(404, 'Destination folder not found');
+  } else {
+    if (from.length < 1) throw httpError(400, 'Cannot move root folder');
+    if (!(await storage.folderExists(from))) throw httpError(404, 'Folder not found');
+    if (to.length > 0 && !(await storage.folderExists(to))) throw httpError(404, 'Destination folder not found');
+    if (to.length >= from.length && from.every((p, i) => to[i] === p)) {
+      throw httpError(400, 'Cannot move a folder into itself or its subfolder');
+    }
+  }
+
+  if (target.length === from.length && target.every((p, i) => p === from[i])) {
+    return send(res, 200, { ok: true, path: target, name: targetName });
+  }
+
+  if (await storage.exists(target)) throw httpError(409, 'A file or folder with that name already exists in destination');
+
+  await storage.move(from, target);
+  return send(res, 200, { ok: true, path: target, name: targetName });
+}
+
+async function handleCopy(req, res) {
+  if (req.method !== 'POST') throw httpError(405, 'Method not allowed');
+  const body = await readJson(req);
+  const { type, from, to, name } = body;
+  if (type !== 'file' && type !== 'folder') throw httpError(400, 'Invalid type');
+  if (!Array.isArray(from) || !Array.isArray(to)) throw httpError(400, 'Invalid path');
+  checkPath(from, type);
+  checkPath(to, 'folder');
+
+  const targetName = (name && typeof name === 'string' && name.trim()) ? name.trim() : from.at(-1);
+  if (!validName(targetName)) throw httpError(400, `Invalid ${type} name`);
+  const target = [...to, targetName];
+  checkPath(target, type);
+
+  let size = 0;
+  if (type === 'file') {
+    if (from.length < 2) throw httpError(400, 'Files must be inside a folder');
+    if (to.length < 1) throw httpError(400, 'Files must be placed inside a folder');
+    if (!(await storage.fileExists(from))) throw httpError(404, 'File not found');
+    if (!(await storage.folderExists(to))) throw httpError(404, 'Destination folder not found');
+
+    const parentEntries = await storage.entries(from.slice(0, -1));
+    const entry = parentEntries.files.find(f => f.name === from.at(-1));
+    size = entry?.size ?? 0;
+  } else {
+    if (from.length < 1) throw httpError(400, 'Cannot copy root folder');
+    if (!(await storage.folderExists(from))) throw httpError(404, 'Folder not found');
+    if (to.length > 0 && !(await storage.folderExists(to))) throw httpError(404, 'Destination folder not found');
+    if (to.length >= from.length && from.every((p, i) => to[i] === p)) {
+      throw httpError(400, 'Cannot copy a folder into itself or its subfolder');
+    }
+    size = await storage.totalSize(from);
+  }
+
+  const { used } = await storage.usage();
+  if (used + size > STORAGE_LIMIT) throw httpError(507, 'Storage is full');
+
+  if (await storage.exists(target)) throw httpError(409, 'A file or folder with that name already exists in destination');
+
+  await storage.copy(from, target);
+  if (size > 0) storage.addUsage(size);
+  return send(res, 201, { ok: true, path: target, name: targetName });
 }
 
 async function handleApi(req, res, url) {
@@ -274,6 +380,9 @@ async function handleApi(req, res, url) {
   }
   if (kind === 'folders') return handleFolders(req, res, parts);
   if (kind === 'files') return handleFiles(req, res, parts, url);
+  if (kind === 'tree') return handleTree(req, res);
+  if (kind === 'move') return handleMove(req, res);
+  if (kind === 'copy') return handleCopy(req, res);
   if (kind === 'zip') return handleZip(req, res, parts);
   if (kind === 'trash') return handleTrash(req, res, parts);
   throw httpError(404, 'Not found');

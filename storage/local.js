@@ -45,9 +45,25 @@ module.exports = function localBackend({ dataDir }) {
     createFolder: (dir) => mkdirp(join(dir)),
 
     async move(from, to) {
+      const src = join(from);
       const dest = join(to);
       await mkdirp(path.dirname(dest));
-      await fsp.rename(join(from), dest);
+      try {
+        await fsp.rename(src, dest);
+      } catch (err) {
+        if (err.code === 'EXDEV' || err.code === 'EPERM' || err.code === 'EACCES') {
+          await fsp.cp(src, dest, { recursive: true });
+          await fsp.rm(src, { recursive: true, force: true });
+        } else {
+          throw err;
+        }
+      }
+    },
+
+    async copy(from, to) {
+      const dest = join(to);
+      await mkdirp(path.dirname(dest));
+      await fsp.cp(join(from), dest, { recursive: true });
     },
 
     deleteFolder: (dir) => fsp.rm(join(dir), { recursive: true, force: true }),

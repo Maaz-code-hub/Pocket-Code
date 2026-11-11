@@ -149,12 +149,22 @@ function createStorage(env, rootDir) {
 
   // Move / rename with instant invalidation
   s.move = async (fromParts, toParts) => {
+    const isFolder = await s.folderExists(fromParts);
     await backend.move(fromParts, toParts);
     await Promise.all([
-      invalidatePath(fromParts, true),
-      invalidatePath(fromParts, false),
-      invalidatePath(toParts, true),
-      invalidatePath(toParts, false),
+      invalidatePath(fromParts, isFolder),
+      invalidatePath(toParts, isFolder),
+      cache.del('usage'),
+    ]);
+  };
+
+  // Copy with instant invalidation
+  s.copy = async (fromParts, toParts) => {
+    const isFolder = await s.folderExists(fromParts);
+    await backend.copy(fromParts, toParts);
+    await Promise.all([
+      invalidatePath(toParts, isFolder),
+      cache.del('usage'),
     ]);
   };
 
@@ -186,6 +196,7 @@ function createStorage(env, rootDir) {
     catch (e) { if (e.code !== 'ENOENT' && e.status !== 404) throw e; }
     return bytes;
   }
+  s.totalSize = totalSize;
 
   // Usage cached for 12 hours (Redis & memory)
   s.touch = () => { cache.del('usage'); };
