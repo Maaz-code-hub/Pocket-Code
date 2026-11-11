@@ -169,6 +169,29 @@ module.exports = function supabaseBackend({ url, key, bucket }) {
     deleteFolder: async (dir) => removeKeys(await allKeys(dir)),
     deleteFile: (file) => removeKeys([toKey(file)]),
 
+    async createSignedDownloadUrl(parts, { expiresIn = 3600, download = false } = {}) {
+      const data = await call('POST', `/object/sign/${bucket}/${toUrlPath(parts)}`, {
+        json: { expiresIn },
+      });
+      const rawUrl = data.signedURL || data.signedUrl || data.url;
+      if (!rawUrl) throw new Error('Failed to create signed URL from Supabase');
+      let fullUrl;
+      if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+        fullUrl = rawUrl;
+      } else if (rawUrl.startsWith('/storage/v1')) {
+        fullUrl = `${url.replace(/\/+$/, '')}${rawUrl}`;
+      } else {
+        fullUrl = `${base}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+      }
+      if (download) {
+        const dlParam = typeof download === 'string' && download.trim()
+          ? `download=${encodeURIComponent(download.trim())}`
+          : 'download';
+        fullUrl += (fullUrl.includes('?') ? '&' : '?') + dlParam;
+      }
+      return fullUrl;
+    },
+
     async createSignedUploadUrl(parts, { upsert = false } = {}) {
       const data = await call('POST', `/object/upload/sign/${bucket}/${toUrlPath(parts)}`, {
         headers: upsert ? { 'x-upsert': 'true' } : {},

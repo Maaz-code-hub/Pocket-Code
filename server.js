@@ -163,9 +163,34 @@ async function handleFiles(req, res, parts, url) {
   if (!(await storage.fileExists(parts))) throw httpError(404, 'File not found');
 
   if (m === 'GET') {
+    const download = url.searchParams.has('download');
+    if (typeof storage.createSignedDownloadUrl === 'function') {
+      try {
+        const signedUrl = await storage.createSignedDownloadUrl(parts, {
+          download: download ? file : false,
+          expiresIn: 3600,
+        });
+        if (signedUrl) {
+          res.writeHead(302, {
+            'Location': signedUrl,
+            'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate',
+            'Access-Control-Allow-Origin': '*',
+          });
+          return res.end();
+        }
+      } catch (signErr) {
+        console.warn('[Storage] Signed URL generation failed, falling back to stream:', signErr.message);
+      }
+    }
+
     const { stream, size } = await storage.readFile(parts);
     const type = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
-    const disp = url.searchParams.has('download') ? 'attachment' : 'inline';
+    const isServerless = Boolean(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    if (isServerless && size !== undefined && size > 4.5 * 1024 * 1024) {
+      throw httpError(413, `File is too large (${(size / 1048576).toFixed(1)} MB) to stream directly through serverless functions (max ~4.5 MB).`);
+    }
+
+    const disp = download ? 'attachment' : 'inline';
     const headers = {
       'Content-Type': type,
       'Content-Disposition': `${disp}; filename*=UTF-8''${encodeURIComponent(file)}`,
@@ -272,6 +297,13 @@ async function handleZip(req, res, parts) {
   if (req.method !== 'GET') throw httpError(405, 'Method not allowed');
   checkPath(parts, 'folder');
   if (!parts.length || !(await storage.folderExists(parts))) throw httpError(404, 'Folder not found');
+  const isServerless = Boolean(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  if (isServerless) {
+    const totalBytes = await storage.totalSize(parts);
+    if (totalBytes > 4.5 * 1024 * 1024) {
+      throw httpError(413, `Folder is too large (${(totalBytes / 1048576).toFixed(1)} MB) to download as a single ZIP on Netlify functions (max 4.5 MB). Download files individually.`);
+    }
+  }
   const name = parts.at(-1);
   res.writeHead(200, {
     'Content-Type': 'application/zip',

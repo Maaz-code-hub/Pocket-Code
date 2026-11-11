@@ -42,5 +42,20 @@ exports.handler = async (event, context) => {
   if (context) {
     context.callbackWaitsForEmptyEventLoop = false;
   }
-  return wrapped(event, context);
+  const response = await wrapped(event, context);
+  // Intercept responses that would exceed AWS Lambda / Netlify 6MB response limit (6,291,556 bytes)
+  if (response && typeof response.body === 'string' && response.body.length > 6000000) {
+    console.error(`[Netlify] Response body size (${response.body.length} bytes) exceeds Lambda 6MB limit.`);
+    return {
+      statusCode: 413,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store',
+      },
+      body: JSON.stringify({
+        error: 'Response payload exceeded serverless limit (6 MB). Use direct cloud storage or download files individually.',
+      }),
+    };
+  }
+  return response;
 };

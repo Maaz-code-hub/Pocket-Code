@@ -35,11 +35,13 @@ function createStorage(env, rootDir) {
     if (isFolder) {
       keys.push(`fexists:${toKey(parts)}`, `list:${toKey(parts)}`, `entries:${toKey(parts)}`);
     } else {
-      keys.push(`fileexists:${toKey(parts)}`, `file:${toKey(parts)}`);
+      keys.push(`fileexists:${toKey(parts)}`, `file:${toKey(parts)}`, `signed:${toKey(parts)}:0`, `signed:${toKey(parts)}:1`);
     }
     await cache.del(...keys);
     if (isFolder) {
       await cache.delPattern(`*:${toKey(parts)}*`);
+    } else {
+      await cache.delPattern(`signed:${toKey(parts)}*`);
     }
   }
 
@@ -134,6 +136,23 @@ function createStorage(env, rootDir) {
     }
     return { stream, size };
   };
+
+  // Presigned download URL with caching (45m TTL)
+  if (typeof backend.createSignedDownloadUrl === 'function') {
+    s.createSignedDownloadUrl = async (parts, opts = {}) => {
+      const dlKey = opts.download ? (typeof opts.download === 'string' ? opts.download : '1') : '0';
+      const key = `signed:${toKey(parts)}:${dlKey}`;
+      const hit = await cache.getJson(key);
+      if (hit) return hit;
+
+      const signedUrl = await backend.createSignedDownloadUrl(parts, opts);
+      if (signedUrl) {
+        // Cache signed URL for 45 minutes (Supabase token is valid for 60 minutes)
+        await cache.setJson(key, signedUrl, 45 * 60);
+      }
+      return signedUrl;
+    };
+  }
 
   // Write file with instant invalidation
   s.writeFile = async (parts, contentStream, opts) => {
