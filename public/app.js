@@ -1328,6 +1328,14 @@ function setProgress(p) {
 async function uploadItems(items, skipped = 0) {
   const base = state.path;
   if (state.view !== 'dir' || !base.length || !perms.canEdit) return;
+
+  const maxBytes = (perms.maxUploadMb || 25) * 1024 * 1024;
+  const tooLarge = items.filter(i => i.file.size > maxBytes);
+  if (tooLarge.length) {
+    toastError(`File too large: ${tooLarge.map(i => i.file.name).join(', ')} exceeds ${perms.maxUploadMb || 25} MB limit`);
+    items = items.filter(i => i.file.size <= maxBytes);
+  }
+
   if (!items.length) {
     if (skipped) toast(`Skipped ${plural(skipped, 'file')} (.git, node_modules, …)`);
     return;
@@ -3446,6 +3454,7 @@ async function start() {
     if (s.locked && !s.authorized) return renderLock();
     perms.editLocked = s.editLocked;
     perms.canEdit = s.canEdit;
+    if (s.maxUploadMb) perms.maxUploadMb = s.maxUploadMb;
   } catch {}
   renderEditLock();
   route();

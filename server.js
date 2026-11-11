@@ -12,7 +12,7 @@ const { createZip } = require('./storage/zip');
 try { process.loadEnvFile(path.join(__dirname, '.env')); } catch {}
 
 const PORT = Number(process.env.PORT) || 3000;
-const MAX_UPLOAD = (Number(process.env.MAX_UPLOAD_MB) || 50) * 1024 * 1024;
+const MAX_UPLOAD = (Number(process.env.MAX_UPLOAD_MB) || 25) * 1024 * 1024;
 const STORAGE_LIMIT = (Number(process.env.STORAGE_LIMIT_MB) || 1024) * 1024 * 1024;
 const KEEP_ALIVE_HOURS = process.env.KEEP_ALIVE_HOURS !== undefined ? Number(process.env.KEEP_ALIVE_HOURS) : 6;
 const ACCESS_KEY = process.env.ACCESS_KEY || ''; // optional: needed to open the site at all
@@ -345,7 +345,13 @@ async function handleApi(req, res, url) {
 
   if (kind === 'auth') return handleAuth(req, res, url);
   if (kind === 'status') {
-    return send(res, 200, { locked: !!ACCESS_KEY, authorized: canView(req), editLocked: !!EDIT_KEY, canEdit: canEdit(req) });
+    return send(res, 200, {
+      locked: !!ACCESS_KEY,
+      authorized: canView(req),
+      editLocked: !!EDIT_KEY,
+      canEdit: canEdit(req),
+      maxUploadMb: Math.round(MAX_UPLOAD / 1048576),
+    });
   }
   if (kind === 'keepalive' || kind === 'ping') {
     try {
