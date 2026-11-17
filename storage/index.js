@@ -268,7 +268,9 @@ function createStorage(env, rootDir) {
     async list() {
       const hit = await cache.getJson('trash:list');
       if (hit !== null) return hit;
-      if (!(await s.folderExists([TRASH]))) {
+      // Ask the backend directly: the cached `fexists` answer for the trash folder
+      // isn't invalidated when the first deletion creates it, which hid new items.
+      if (!(await backend.folderExists([TRASH]))) {
         await cache.setJson('trash:list', []);
         return [];
       }

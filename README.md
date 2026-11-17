@@ -15,8 +15,34 @@ A lightweight, personal cloud locker for your code snippets, documents, and file
 - 🚀 **Netlify Serverless Ready & Direct Cloud Uploads**: Deploy to Netlify in minutes. Uses Direct-to-Supabase signed uploads to seamlessly bypass Netlify's 6 MB serverless function payload limit, supporting up to 25 MB+ file uploads with real-time progress bars.
 - 👁️ **Instant Previews**: Preview code, Markdown, images, PDFs, audio, and video directly in the browser.
 - 📦 **Bulk Upload & ZIP Download**: Drag & drop entire folder hierarchies (automatically skips `.git` and `node_modules`), or download any folder as a `.zip`.
+- 🪪 **Fill Name & USN**: Select documents in a folder, enter your Name and USN, and download filled-in copies — the originals are never changed. Details below.
 - 🗑️ **30-Day Trash**: Accidental deletions go to Trash with instant undo and 30-day retention before permanent purge.
+- 📱 **Mobile & Dark Mode Friendly**: Responsive layout for phones, tablets and desktops, with a "⋯" action menu on touch screens and full dark-mode support.
 - 🔒 **Access & Edit Security**: Optional view-only mode (`EDIT_KEY`) and whole-site lock (`ACCESS_KEY`).
+
+---
+
+## 🪪 Fill Name & USN
+
+Automate filling your Name and USN into lab records, assignments and other templates.
+
+1. Put the placeholders `{{NAME}}` and `{{USN}}` in your `.docx` (or text/code) files, wherever the values should appear — headers and footers work too.
+2. Open the folder and click **Fill Name & USN** (or right-click a file → **Fill Name & USN…**).
+3. Type your Name and USN and tick the files to fill.
+4. Click **Preview** to check the result, or **Fill & download** to save it.
+
+| Feature | What it does |
+|---|---|
+| **Placeholder check** | Each file is scanned and tagged ✓ *Name + USN*, *Name only*, or *No placeholders*; **Select only these** ticks the files that have them. |
+| **Custom placeholders** | Already have text like an old name in the document? Change the placeholder text under *Placeholders to replace*. Matching is exact and case-sensitive. |
+| **Preview** | Shows the filled documents with every replaced value highlighted. Nothing is downloaded until you confirm. |
+| **Edit in preview** | Click **Edit** on a document to fix anything (change text, add or delete lines) before downloading. |
+| **One PDF** *(default)* | All selected documents in a single PDF, each starting on a new page. Pages are split between lines (never through one), and the text is selectable and searchable. |
+| **Separate files** | Each filled file downloads in its original format (`.docx` / text). Preview edits are carried into the `.docx`, keeping the rest of its formatting. |
+
+Everything runs in your browser — the stored originals are never modified. Your Name, USN, placeholders and output choice are remembered for next time (in that browser only).
+
+> **Notes:** Word pages in the PDF are high-resolution images with an invisible text layer on top, so the PDF looks exactly like the document but isn't smaller than it. Numbered-list numbers and non-Latin scripts are visible but not selectable. Legacy `.doc` files aren't supported — save them as `.docx` first.
 
 ---
 
@@ -26,6 +52,7 @@ A lightweight, personal cloud locker for your code snippets, documents, and file
 - **Storage**: Supabase Storage (S3-compatible) or local disk
 - **Cache**: Upstash Redis (`ioredis`) with automatic in-memory fallback
 - **Frontend**: Vanilla ES6+, CSS variables, CodeMirror, Quill-based Word workspace
+- **Documents & PDF**: JSZip, docx-preview, html2canvas + jsPDF (loaded on demand for PDF export)
 
 ---
 

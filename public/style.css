@@ -169,7 +169,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 80px; }
 .folder-text { min-width: 0; }
 
 /* Sub-folders: compact horizontal cards */
-.grid.compact { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.grid.compact { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
 .grid.compact .folder { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
 .grid.compact .folder-icon { width: 36px; height: 36px; margin: 0; flex-shrink: 0; }
 .grid.compact .folder-icon svg { width: 18px; height: 18px; }
@@ -252,6 +252,41 @@ main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 80px; }
 }
 .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
+/* Fill Name & USN dialog */
+.fill-body { display: flex; flex-direction: column; gap: 14px; }
+.fill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 520px) { .fill-grid { grid-template-columns: 1fr; } }
+.fill-keys { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface-2); }
+.fill-keys summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.fill-keys summary code { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.fill-keys[open] summary { margin-bottom: 10px; }
+.fill-format { display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+.fill-format input[type="radio"] { width: 16px; height: 16px; accent-color: var(--accent); }
+.fill-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+.fill-list-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 600; }
+.fill-count { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.fill-list { border: 1px solid var(--border); border-radius: 10px; max-height: 280px; overflow: auto; }
+.fill-check { display: flex; align-items: center; gap: 10px; cursor: pointer; min-width: 0; }
+.fill-check input { width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; }
+.fill-row { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.fill-row:last-child { border-bottom: 0; }
+.fill-row:hover { background: var(--surface-2); }
+.fill-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fill-size { color: var(--muted); font-size: 12px; }
+.fill-scan { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); margin-top: -6px; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; }
+.link-btn:hover { text-decoration: underline; }
+.fill-status { font-size: 11.5px; font-weight: 500; padding: 2px 8px; border-radius: 999px; white-space: nowrap; color: var(--muted); }
+.fill-status:empty { display: none; }
+.fill-status.ok { color: #15803d; background: color-mix(in srgb, #16a34a 14%, transparent); }
+.fill-status.warn { color: #b45309; background: color-mix(in srgb, #f59e0b 16%, transparent); }
+.fill-status.bad { color: #b91c1c; background: color-mix(in srgb, #ef4444 13%, transparent); }
+@media (prefers-color-scheme: dark) {
+  .fill-status.ok { color: #4ade80; }
+  .fill-status.warn { color: #fbbf24; }
+  .fill-status.bad { color: #f87171; }
+}
+
 /* Editor */
 .editor-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .editor-name { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; padding: 12px 16px; font-family: var(--mono); font-size: 13px; box-shadow: none !important; }
@@ -304,7 +339,8 @@ main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 80px; }
   margin-bottom: 24px !important;
   border-radius: 6px !important;
   box-sizing: border-box !important;
-  max-width: 100% !important;
+  max-width: none !important; /* keep the real page width; small screens zoom the page instead */
+  flex-shrink: 0;
 }
 .docx-preview-wrapper table { border-collapse: collapse; }
 
@@ -1641,4 +1677,101 @@ netlify-drawer,
 }
 .row.is-dragging, .folder.is-dragging {
   opacity: 0.4;
+}
+
+/* Fill preview */
+.modal.fill-preview { max-width: min(980px, 96vw); }
+.fill-preview-body { overflow: auto; flex: 1; min-height: 0; padding: 16px; background: var(--surface-2); }
+.fill-doc + .fill-doc { margin-top: 24px; }
+.fill-doc-head { display: flex; align-items: center; gap: 10px; font-weight: 600; margin-bottom: 10px; min-width: 0; }
+.fill-doc-body { overflow-x: auto; border-radius: 10px; }
+.fill-doc-body .docx-wrapper { padding: 16px; border-radius: 10px; }
+.fill-text { margin: 0; padding: 16px; white-space: pre-wrap; word-break: break-word; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font: 13px/1.5 'JetBrains Mono', monospace; }
+mark.fill-mark { background: #fde047; color: #111; border-radius: 3px; box-shadow: 0 0 0 2px #facc15; }
+.fill-edit-btn { padding: 5px 12px; font-size: 12.5px; }
+.fill-edit-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.fill-edited { font-size: 11.5px; font-weight: 500; padding: 2px 8px; border-radius: 999px; color: var(--accent); background: var(--accent-soft); }
+.fill-edited[hidden] { display: none; }
+.fill-doc-body.editing section.docx, .fill-doc-body.editing pre.fill-text { outline: 2px dashed var(--accent); outline-offset: 2px; cursor: text; }
+.fill-doc-body [contenteditable]:focus { outline-style: solid; }
+
+/* ---------- Responsive polish ---------- */
+/* Modals: never wider than the screen (grid items default to min-content width). */
+.modal-bg { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+.modal { max-width: 100%; min-width: 0; }
+.modal.fill-dialog { width: min(560px, 100%); }
+.modal-foot { flex-wrap: wrap; }
+
+/* "⋯" menu button: only on touch screens / phones, where hover tools don't work. */
+.more-btn { display: none; }
+@media (hover: none), (max-width: 640px) {
+  .more-btn { display: inline-grid; }
+  .row .tools > :not(.keep):not(.more-btn),
+  .folder .tools > :not(.more-btn) { display: none; }
+  .folder .tools { opacity: 1; }
+  .grid.compact .tools { position: static; transform: none; box-shadow: none; background: none; margin-left: auto; }
+  .hint { display: none; }
+}
+
+@media (max-width: 640px) {
+  /* Page header: title on top, actions in a compact strip below. */
+  .page-head { align-items: stretch; gap: 12px; margin-bottom: 18px; }
+  .page-head > div:first-child { width: 100%; }
+  .page-head .actions { width: 100%; gap: 6px; }
+  .page-head .actions .btn { padding: 7px 11px; font-size: 13.5px; }
+  .page-head .actions .btn.is-empty { display: none; }
+  .row { padding: 10px 8px 10px 12px; gap: 8px; }
+
+  /* Fill dialog */
+  .modal.fill-dialog .modal-body { padding: 14px 12px; }
+  .fill-size { display: none; }
+  .fill-row { padding: 8px 10px; gap: 8px; }
+  .fill-status { padding: 2px 6px; font-size: 11px; }
+  .modal.fill-dialog .modal-foot .btn,
+  .modal.fill-preview .modal-foot .btn { flex: 1 1 auto; justify-content: center; }
+
+  /* Preview */
+  .fill-preview-body { padding: 10px 8px; }
+  .fill-doc-body .docx-wrapper { padding: 8px; }
+  .fill-doc-head { flex-wrap: wrap; gap: 6px 8px; }
+  .fill-doc-head .fill-name { flex: 1 1 60%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fill-edit-btn { margin-left: auto; }
+}
+.fill-zoom-btn { padding: 5px 10px; font-size: 12.5px; }
+.fill-zoom-btn[hidden] { display: none; }
+/* Let the page frame grow with the page so a wide page scrolls instead of being clipped on the left. */
+.fill-doc-body .docx-wrapper { width: max-content; min-width: 100%; box-sizing: border-box; }
+
+/* ---------- Audit fixes ---------- */
+/* Native scrollbars, checkboxes and inputs follow the theme (they stayed white in dark mode). */
+:root { color-scheme: light; }
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; }
+  * { scrollbar-color: #3f3f46 transparent; }
+  .word-status-pill { color: #4ade80; background: color-mix(in srgb, #16a34a 18%, transparent); }
+  .word-status-pill.dirty { color: #fbbf24; background: color-mix(in srgb, #f59e0b 18%, transparent); }
+}
+
+/* Small sub-folder cards: just Download + "⋯" so the icons never cover the name. */
+.grid.compact .more-btn { display: inline-grid; }
+.grid.compact .tools > :not([data-zip]):not(.more-btn) { display: none; }
+
+@media (max-width: 640px) {
+  /* Modal header: title + close on the first row, tool buttons wrap to a second row. */
+  .modal-head { flex-wrap: wrap; row-gap: 8px; }
+  .modal-head > div:first-child { flex: 1 1 calc(100% - 48px) !important; } /* beats the inline flex:1 */
+  .modal-head > [data-close] { order: 1; }
+  .modal-head > :not(:first-child):not([data-close]) { order: 2; }
+  .modal-head .btn.primary { margin-left: auto !important; }
+
+  /* Word editor title bar */
+  .word-titlebar { padding: 6px 8px; gap: 6px; }
+  .word-titlebar-left { flex: 1; gap: 6px; }
+  .word-brand-name { display: none; }
+  .word-filename-wrap { flex: 1; min-width: 0; }
+  .word-filename-input { min-width: 0; width: 100%; max-width: none; }
+  .word-status-pill span { display: none; }
+  .word-titlebar-right { gap: 4px; flex-shrink: 0; }
+  .word-action-btn { padding: 5px 8px; }
+  .word-action-btn[data-act="download"] span { display: none; }
 }

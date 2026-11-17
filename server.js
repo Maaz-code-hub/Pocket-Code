@@ -102,9 +102,10 @@ async function handleFolders(req, res, parts) {
 
   if (m === 'GET') {
     const { folders, files } = await storage.list(parts);
+    const byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
     return send(res, 200, {
-      folders: folders.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })),
-      files: parts.length ? files.sort((a, b) => b.updated - a.updated) : [], // root holds folders only
+      folders: folders.sort(byName),
+      files: parts.length ? files.sort(byName) : [], // root holds folders only
     });
   }
   if (m === 'POST') {

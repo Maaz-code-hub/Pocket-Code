@@ -17,6 +17,8 @@ const ICONS = {
   restore: '<path d="M4 12a8 8 0 108-8 8 8 0 00-6 2.7L4 9"/><path d="M4 4v5h5"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  more: '<circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/>',
+  eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 011-1h10"/>',
   cut: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>',
   paste: '<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
@@ -710,6 +712,7 @@ function showContextMenu(e, item = null) {
     itemsHtml = `
       <button class="context-menu-item" data-cact="preview">${icon('code')} Open preview</button>
       <button class="context-menu-item" data-cact="download">${icon('download')} Download</button>
+      ${canFill(item.name) ? `<button class="context-menu-item" data-cact="fill">${icon('edit')} Fill Name &amp; USN…</button>` : ''}
       ${perms.canEdit ? `
         <div class="context-menu-divider"></div>
         <button class="context-menu-item" data-cact="copy">${icon('copy')} Copy <span class="context-menu-shortcut">Ctrl+C</span></button>
@@ -781,6 +784,7 @@ function handleContextAction(act, item) {
   else if (act === 'paste') pasteItem();
   else if (act === 'pasteInto' && item) pasteItem([...state.path, item.name]);
   else if (act === 'preview' && item) openPreview(item.name);
+  else if (act === 'fill' && item) openFillDialog(item.name);
   else if (act === 'download' && item) {
     location.href = `${fileUrl([...state.path, item.name])}?download`;
   } else if (act === 'open' && item) {
@@ -859,8 +863,9 @@ function render() {
   const edit = perms.canEdit;
   const q = searchInput.value.trim().toLowerCase();
   const match = (i) => !q || i.name.toLowerCase().includes(q);
-  const folders = data ? data.folders.filter(match) : [];
-  const files = data ? data.files.filter(match) : [];
+  const byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+  const folders = data ? data.folders.filter(match).sort(byName) : [];
+  const files = data ? data.files.filter(match).sort(byName) : [];
   const total = data ? data.folders.length + data.files.length : 0;
 
   document.title = isRoot ? 'DevLocker' : `${path.at(-1)} · DevLocker`;
@@ -878,13 +883,17 @@ function render() {
 
   const zipBtn = !isRoot && total ? `<a class="btn" href="${zipUrl(path)}" title="Download this folder as a .zip">${icon('zip')} Download ZIP</a>` : '';
   const pasteBtn = edit ? `
-    <button class="btn${clipboard ? ' accent' : ''}" data-act="paste" title="${clipboard ? `Paste "${esc(clipboard.name)}" (${clipboard.action === 'cut' ? 'move' : 'copy'}) here` : 'Paste (clipboard is empty — copy or cut a file or folder first)'}">
+    <button class="btn${clipboard ? ' accent' : ' is-empty'}" data-act="paste" title="${clipboard ? `Paste "${esc(clipboard.name)}" (${clipboard.action === 'cut' ? 'move' : 'copy'}) here` : 'Paste (clipboard is empty — copy or cut a file or folder first)'}">
       ${icon('paste')} Paste${clipboard ? ` (${esc(clipboard.name.length > 14 ? clipboard.name.slice(0, 12) + '…' : clipboard.name)})` : ''}
     </button>` : '';
 
-  const actions = !edit ? zipBtn : isRoot
+  const fillBtn = !isRoot && data?.files.some(f => canFill(f.name))
+    ? `<button class="btn" data-act="fill" title="Download copies of documents with your Name and USN filled in">${icon('edit')} Fill Name &amp; USN</button>` : '';
+
+  const actions = !edit ? `${fillBtn} ${zipBtn}` : isRoot
     ? `${pasteBtn} <button class="btn primary" data-act="newFolder">${icon('plus')} New folder</button>`
-    : `${zipBtn}
+    : `${fillBtn}
+       ${zipBtn}
        ${pasteBtn}
        <button class="btn" data-act="newFolder">${icon('folderPlus')} New folder</button>
        <div class="menu-wrap">
@@ -946,6 +955,7 @@ function render() {
               </div>
               <div class="tools${edit ? '' : ' one'}">
                 <span class="icon-btn" data-zip="${esc(f.name)}" title="Download as ZIP">${icon('download')}</span>
+                <button class="icon-btn more-btn" data-more-folder="${esc(f.name)}" title="More actions" aria-label="More actions">${icon('more')}</button>
                 ${edit ? `
                 <button class="icon-btn" data-copy-folder="${esc(f.name)}" title="Copy folder (Ctrl+C)">${icon('copy')}</button>
                 <button class="icon-btn" data-move-folder="${esc(f.name)}" title="Move folder (Ctrl+X)">${icon('move')}</button>
@@ -972,7 +982,8 @@ function render() {
               <div class="meta">${fmtSize(f.size)}</div>
               <div class="meta">${fmtDate(f.updated)}</div>
               <div class="tools">
-                <a class="icon-btn" href="${fileUrl([...path, f.name])}?download" title="Download" data-stop>${icon('download')}</a>
+                <a class="icon-btn keep" href="${fileUrl([...path, f.name])}?download" title="Download" data-stop>${icon('download')}</a>
+                <button class="icon-btn more-btn" data-more-file="${esc(f.name)}" title="More actions" aria-label="More actions">${icon('more')}</button>
                 ${edit ? `
                 <button class="icon-btn" data-copy-file="${esc(f.name)}" title="Copy file (Ctrl+C)">${icon('copy')}</button>
                 <button class="icon-btn" data-move-file="${esc(f.name)}" title="Move file (Ctrl+X)">${icon('move')}</button>
@@ -1011,6 +1022,7 @@ function bindActions() {
     uploadFiles: () => { closeAllMenus(); fileInput.click(); },
     uploadFolder: () => { closeAllMenus(); dirInput.click(); },
     paste: () => { closeAllMenus(); pasteItem(); },
+    fill: () => { closeAllMenus(); openFillDialog(); },
     uploadMenu: (e) => {
       e.stopPropagation();
       const m = e.currentTarget.nextElementSibling;
@@ -1063,6 +1075,20 @@ function bindActions() {
   app.querySelectorAll('[data-delete-file]').forEach(b => b.onclick = (e) => {
     e.stopPropagation();
     moveToTrash(`/files/${joinPath([...path, b.dataset.deleteFile])}`, b.dataset.deleteFile);
+  });
+
+  // "⋯" buttons (shown on phones/touch screens) open the same menu as right-click.
+  const openMenuAt = (btn, item) => {
+    const r = btn.getBoundingClientRect();
+    showContextMenu({ preventDefault() {}, clientX: r.right, clientY: r.bottom + 4 }, item);
+  };
+  app.querySelectorAll('[data-more-file]').forEach(b => b.onclick = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    openMenuAt(b, { type: 'file', name: b.dataset.moreFile });
+  });
+  app.querySelectorAll('[data-more-folder]').forEach(b => b.onclick = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    openMenuAt(b, { type: 'folder', name: b.dataset.moreFolder });
   });
 
   // Context menu bindings
@@ -3395,6 +3421,20 @@ async function openPreview(name) {
               useBase64URL: true,
             });
             rendered = true;
+            // Shrink pages to fit narrow screens (phones); re-fit on resize.
+            const fitPages = () => {
+              const inner = wrap.querySelector('.docx-wrapper');
+              const sec = inner?.querySelector('section.docx');
+              if (!sec) return;
+              inner.style.zoom = '';
+              const pad = parseFloat(getComputedStyle(inner).paddingLeft) * 2 || 0;
+              const cs = getComputedStyle(wrap);
+              const avail = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+              const z = Math.min(1, avail / (sec.offsetWidth + pad));
+              if (z < 1) inner.style.zoom = z.toFixed(3);
+            };
+            fitPages();
+            new ResizeObserver(fitPages).observe(wrap);
           } catch (renderErr) {
             console.warn('docx.renderAsync failed, falling back to clean HTML:', renderErr);
           }
@@ -3470,6 +3510,737 @@ async function openPreview(name) {
       };
     }
   }
+}
+
+/* ---------- Fill Name & USN (template filling) ----------
+   Downloads filled-in copies of the selected files. Nothing is written back to
+   storage, so the original documents stay untouched. */
+const FILL_PREFS_KEY = 'devlocker.fillPrefs';
+const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const XML_NS = 'http://www.w3.org/XML/1998/namespace';
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+const canFill = (name) => ext(name) === 'docx' || isTextual(name);
+
+function loadFillPrefs() {
+  const defaults = { name: '', usn: '', nameKey: '{{NAME}}', usnKey: '{{USN}}', format: 'pdf' };
+  try { return { ...defaults, ...JSON.parse(localStorage.getItem(FILL_PREFS_KEY) || '{}') }; }
+  catch { return defaults; }
+}
+function saveFillPrefs(p) {
+  try { localStorage.setItem(FILL_PREFS_KEY, JSON.stringify(p)); } catch {}
+}
+
+// Replace `find` across a run of <w:t> nodes. Word often splits a word like
+// {{NAME}} over several runs, so we match on the joined text and then splice
+// the replacement into the first node that the match touches.
+function replaceInTextNodes(nodes, find, repl) {
+  if (!find) return 0;
+  let count = 0, from = 0;
+  for (;;) {
+    const full = nodes.map(t => t.textContent).join('');
+    const idx = full.indexOf(find, from);
+    if (idx < 0) return count;
+    const end = idx + find.length;
+    let pos = 0, placed = false;
+    for (const t of nodes) {
+      const s = t.textContent, a = pos, b = pos + s.length;
+      pos = b;
+      if (b <= idx || a >= end) continue;
+      const lo = Math.max(idx, a) - a, hi = Math.min(end, b) - a;
+      t.textContent = s.slice(0, lo) + (placed ? '' : repl) + s.slice(hi);
+      t.setAttributeNS(XML_NS, 'xml:space', 'preserve');
+      placed = true;
+    }
+    from = idx + repl.length;
+    count++;
+  }
+}
+
+const DOCX_TEXT_PARTS = /^word\/(document|header\d*|footer\d*|footnotes|endnotes)\.xml$/;
+
+// A paragraph's own <w:t> nodes (nested paragraphs inside text boxes are
+// visited on their own).
+function ownTextNodes(para) {
+  return [...para.getElementsByTagNameNS(W_NS, 't')].filter(t => {
+    let el = t.parentNode;
+    while (el && !(el.localName === 'p' && el.namespaceURI === W_NS)) el = el.parentNode;
+    return el === para;
+  });
+}
+
+const countIn = (text, key) => (key ? text.split(key).length - 1 : 0);
+
+// How many times each key occurs in a file (matches across Word's split runs).
+async function countPlaceholders(name, data, keys) {
+  if (ext(name) !== 'docx') return keys.map(k => countIn(data, k));
+  const zip = await JSZip.loadAsync(data);
+  const counts = keys.map(() => 0);
+  for (const p of Object.keys(zip.files).filter(p => DOCX_TEXT_PARTS.test(p))) {
+    const doc = new DOMParser().parseFromString(await zip.file(p).async('string'), 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) continue;
+    for (const para of doc.getElementsByTagNameNS(W_NS, 'p')) {
+      const text = ownTextNodes(para).map(t => t.textContent).join('');
+      if (text) keys.forEach((k, i) => { counts[i] += countIn(text, k); });
+    }
+  }
+  return counts;
+}
+
+async function fillDocx(buf, pairs) {
+  const zip = await JSZip.loadAsync(buf);
+  const parts = Object.keys(zip.files).filter(p => DOCX_TEXT_PARTS.test(p));
+  let count = 0;
+  for (const p of parts) {
+    const xml = await zip.file(p).async('string');
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) continue;
+    let here = 0;
+    for (const para of doc.getElementsByTagNameNS(W_NS, 'p')) {
+      const ts = ownTextNodes(para);
+      if (!ts.length) continue;
+      for (const [find, repl] of pairs) here += replaceInTextNodes(ts, find, repl);
+    }
+    if (here) {
+      zip.file(p, new XMLSerializer().serializeToString(doc));
+      count += here;
+    }
+  }
+  const blob = await zip.generateAsync({ type: 'blob', mimeType: DOCX_MIME, compression: 'DEFLATE' });
+  return { blob, count };
+}
+
+function fillText(text, pairs) {
+  let count = 0;
+  for (const [find, repl] of pairs) {
+    if (!find) continue;
+    const pieces = text.split(find);
+    count += pieces.length - 1;
+    text = pieces.join(repl);
+  }
+  return { blob: new Blob([text], { type: 'text/plain;charset=utf-8' }), text, count };
+}
+
+function saveBlob(blob, name) {
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+const loadedScripts = {};
+function loadScript(src) {
+  return (loadedScripts[src] ||= new Promise((resolve, reject) => {
+    const s = Object.assign(document.createElement('script'), { src, onload: resolve });
+    s.onerror = () => { delete loadedScripts[src]; reject(new Error('Could not load the PDF library — check your connection')); };
+    document.head.appendChild(s);
+  }));
+}
+async function loadPdfLibs() {
+  await Promise.all([
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+  ]);
+  return window.jspdf.jsPDF;
+}
+
+// Vertical extent [top, bottom] of every text line and image in a rendered
+// page, relative to the page's top edge (CSS px).
+function lineRects(sec) {
+  const base = sec.getBoundingClientRect().top;
+  const out = [];
+  const range = document.createRange();
+  const walker = document.createTreeWalker(sec, NodeFilter.SHOW_TEXT);
+  for (let n; (n = walker.nextNode());) {
+    if (!n.textContent.trim()) continue;
+    range.selectNodeContents(n);
+    for (const r of range.getClientRects()) if (r.height) out.push([r.top - base, r.bottom - base]);
+  }
+  sec.querySelectorAll('img, svg, canvas').forEach(el => {
+    const r = el.getBoundingClientRect();
+    if (r.height) out.push([r.top - base, r.bottom - base]);
+  });
+  return out;
+}
+
+// Lowest point at or above `limit` that does not slice through a line/image.
+function pickCut(rects, start, limit) {
+  const straddles = (y) => rects.some(([t, b]) => t < y - 0.5 && b > y + 0.5);
+  if (!straddles(limit)) return limit;
+  const cands = rects.map(r => r[1]).filter(b => b > start + 40 && b < limit).sort((a, b) => b - a);
+  for (const c of cands) if (!straddles(c)) return c;
+  return limit; // a single item taller than a page: no clean cut exists
+}
+
+// Words of a rendered page with their boxes (CSS px, relative to the page),
+// used to lay invisible, selectable text over the page image in the PDF.
+function wordBoxes(sec) {
+  const base = sec.getBoundingClientRect();
+  const out = [];
+  const range = document.createRange();
+  const walker = document.createTreeWalker(sec, NodeFilter.SHOW_TEXT);
+  for (let n; (n = walker.nextNode());) {
+    const s = n.nodeValue;
+    for (const m of s.matchAll(/\S+/g)) {
+      range.setStart(n, m.index);
+      range.setEnd(n, m.index + m[0].length);
+      const r = range.getClientRects()[0];
+      if (!r || !r.width || !r.height) continue;
+      out.push({ text: m[0], left: r.left - base.left, top: r.top - base.top, width: r.width, height: r.height });
+    }
+  }
+  return out;
+}
+
+// Standard PDF fonts only cover Latin-1; map common typography and drop the rest.
+const pdfSafe = (t) => t.replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+  .replace(/[–—]/g, '-').replace(/…/g, '...').replace(/•/g, '*').replace(/[^\x20-\xFF]/g, '');
+
+function addTextLayer(pdf, words, from, to, dy) {
+  pdf.setFont('helvetica', 'normal');
+  for (const w of words) {
+    const mid = w.top + w.height / 2;
+    if (mid < from || mid >= to) continue;
+    const text = pdfSafe(w.text);
+    if (!text) continue;
+    const fs = Math.max(1, (w.height * 0.75) / 1.2);
+    pdf.setFontSize(fs);
+    const natural = pdf.getTextWidth(text);
+    if (!natural) continue;
+    const x = w.left * 0.75;
+    const y = (w.top - from + dy + w.height * 0.8) * 0.75;
+    pdf.text(text, x, y, { renderingMode: 'invisible', horizontalScale: (w.width * 0.75) / natural });
+  }
+}
+
+// Builds one PDF from the filled documents. Every document starts on a new
+// page; each rendered Word page becomes one PDF page.
+async function buildFilledPdf(items, onProgress) {
+  const JsPDF = await loadPdfLibs();
+  let pdf = null;
+  const addPage = (wPt, hPt) => {
+    const o = wPt > hPt ? 'l' : 'p';
+    if (!pdf) pdf = new JsPDF({ unit: 'pt', format: [wPt, hPt], orientation: o, compress: true });
+    else pdf.addPage([wPt, hPt], o);
+  };
+
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-20000px;top:0;background:#fff;';
+  document.body.appendChild(host);
+  try {
+    for (const [i, it] of items.entries()) {
+      onProgress?.(i + 1, items.length);
+
+      if (it.text != null) {
+        // Plain text: write real (selectable) text, paginated on A4.
+        const W = 595.28, H = 841.89, M = 56, LH = 13;
+        addPage(W, H);
+        pdf.setFont('courier', 'normal'); pdf.setFontSize(10);
+        const lines = pdf.splitTextToSize(it.text.replace(/\t/g, '    '), W - 2 * M);
+        let y = M;
+        for (const line of lines) {
+          if (y > H - M) { addPage(W, H); pdf.setFont('courier', 'normal'); pdf.setFontSize(10); y = M; }
+          pdf.text(line, M, y + 10);
+          y += LH;
+        }
+        continue;
+      }
+
+      host.replaceChildren();
+      if (it.rendered) host.appendChild(it.rendered);
+      else await window.docx.renderAsync(await it.blob.arrayBuffer(), host, host, {
+        // Word's saved "lastRenderedPageBreak" markers split paragraphs (orphaning
+        // list numbers) and don't match our reflowed layout, so ignore them; only
+        // explicit page breaks start a new section and we paginate the rest.
+        inWrapper: false, breakPages: true, ignoreLastRenderedPageBreak: true,
+        ignoreWidth: false, ignoreHeight: false, useBase64URL: true,
+      });
+      await document.fonts?.ready;
+      await Promise.all([...host.querySelectorAll('img')].map(img => img.complete ? null : new Promise(r => { img.onload = img.onerror = r; })));
+
+      const pages = [...host.querySelectorAll('section.docx')];
+      for (const sec of pages) {
+        sec.style.boxShadow = 'none';
+        sec.style.margin = '0';
+        const wPx = sec.offsetWidth;
+        const pageHPx = parseFloat(getComputedStyle(sec).minHeight) || wPx * Math.SQRT2;
+        const scale = 2;
+        const cs = getComputedStyle(sec);
+        const padT = parseFloat(cs.paddingTop) || 0, padB = parseFloat(cs.paddingBottom) || 0;
+        const rects = lineRects(sec);
+        const words = wordBoxes(sec);
+        const canvas = await html2canvas(sec, { scale, backgroundColor: '#ffffff', useCORS: true, logging: false });
+        const k = canvas.height / sec.offsetHeight; // canvas px per CSS px
+
+        // When the rendered page is taller than a real page (the browser's fonts
+        // reflow text slightly longer than Word did), split it between lines.
+        // Continuation pages keep the document's top margin.
+        const slices = [];
+        if (sec.offsetHeight <= pageHPx + 1) slices.push([0, sec.offsetHeight]);
+        else {
+          const contentEnd = rects.length ? Math.max(...rects.map(r => r[1])) : sec.offsetHeight - padB;
+          const bodyH = pageHPx - padT - padB;
+          let start = 0, limit = pageHPx - padB;
+          for (;;) {
+            const cut = Math.min(pickCut(rects, start, limit), sec.offsetHeight);
+            slices.push([start, cut]);
+            if (cut >= contentEnd - 0.5 || cut >= sec.offsetHeight) break;
+            start = cut; limit = cut + bodyH;
+          }
+        }
+
+        const wPt = wPx * 0.75, hPt = pageHPx * 0.75;
+        slices.forEach(([from, to], idx) => {
+          const c = document.createElement('canvas');
+          c.width = canvas.width; c.height = Math.round(pageHPx * k);
+          const ctx = c.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+          const sy = Math.round(from * k), sh = Math.min(Math.round((to - from) * k), canvas.height - sy);
+          const dy = idx === 0 ? 0 : Math.round(padT * k);
+          ctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, dy, canvas.width, sh);
+          addPage(wPt, hPt);
+          pdf.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, wPt, hPt, undefined, 'FAST');
+          addTextLayer(pdf, words, from, to, idx === 0 ? 0 : padT);
+        });
+      }
+    }
+  } finally {
+    host.remove();
+  }
+  if (!pdf) throw new Error('Nothing to put in the PDF');
+  return pdf.output('blob');
+}
+
+/* Private-use characters that bracket each filled value in preview copies. */
+const MARK_OPEN = '', MARK_CLOSE = '';
+
+// Turns MARK_OPEN…MARK_CLOSE spans in rendered text into <mark> elements.
+function highlightMarks(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  for (let n; (n = walker.nextNode());) if (/[]/.test(n.nodeValue)) nodes.push(n);
+  for (const n of nodes) {
+    const frag = document.createDocumentFragment();
+    for (const part of n.nodeValue.split(/([^]*)/)) {
+      if (part.startsWith(MARK_OPEN) && part.endsWith(MARK_CLOSE)) {
+        const mk = document.createElement('mark');
+        mk.className = 'fill-mark';
+        mk.textContent = part.slice(1, -1);
+        frag.appendChild(mk);
+      } else if (part) frag.appendChild(document.createTextNode(part.replace(/[]/g, '')));
+    }
+    n.replaceWith(frag);
+  }
+}
+
+// Takes a snapshot of a preview document for download: highlight marks are
+// unwrapped and editing is switched off. Returns a detached element.
+function snapshotPreview(host) {
+  const clone = host.cloneNode(true);
+  clone.querySelectorAll('mark.fill-mark').forEach(mk => mk.replaceWith(document.createTextNode(mk.textContent)));
+  clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+  clone.querySelectorAll('.docx-wrapper').forEach(w => { w.style.zoom = ''; });
+  clone.normalize();
+  return clone;
+}
+
+// Paragraph texts of a rendered preview (body only, in document order).
+function previewParaTexts(root) {
+  return [...root.querySelectorAll('section.docx article p')].map(p => {
+    let t = p.textContent;
+    p.querySelectorAll('p').forEach(inner => { t = t.replace(inner.textContent, ''); });
+    return t.replace(/[]/g, '');
+  });
+}
+
+// Longest-common-subsequence alignment of two key arrays → matched index pairs.
+function alignKeys(a, b) {
+  const n = a.length, m = b.length, W = m + 1;
+  const dp = new Uint16Array((n + 1) * W);
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) {
+    dp[i * W + j] = a[i] === b[j] ? dp[(i + 1) * W + j + 1] + 1 : Math.max(dp[(i + 1) * W + j], dp[i * W + j + 1]);
+  }
+  const pairs = [];
+  for (let i = 0, j = 0; i < n && j < m;) {
+    if (a[i] === b[j]) { pairs.push([i, j]); i++; j++; }
+    else if (dp[(i + 1) * W + j] >= dp[i * W + j + 1]) i++;
+    else j++;
+  }
+  return pairs;
+}
+
+function setParaText(para, text) {
+  const ts = ownTextNodes(para);
+  if (ts.length) {
+    ts[0].textContent = text;
+    ts[0].setAttributeNS(XML_NS, 'xml:space', 'preserve');
+    ts.slice(1).forEach(t => { t.textContent = ''; });
+    return;
+  }
+  const doc = para.ownerDocument;
+  const r = doc.createElementNS(W_NS, 'w:r'), t = doc.createElementNS(W_NS, 'w:t');
+  t.setAttributeNS(XML_NS, 'xml:space', 'preserve');
+  t.textContent = text;
+  r.appendChild(t); para.appendChild(r);
+}
+
+// Applies text edits made in the preview back onto the real .docx, paragraph by
+// paragraph, so untouched formatting stays exactly as it was. `before` is the
+// preview's paragraph text when rendered, `after` the text after editing.
+async function applyPreviewEdits(blob, before, after) {
+  const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+  const xml = await zip.file('word/document.xml').async('string');
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const body = doc.getElementsByTagNameNS(W_NS, 'body')[0];
+  const paras = [...body.getElementsByTagNameNS(W_NS, 'p')];
+  const key = (t) => t.replace(/\s+/g, '');
+
+  // 1) Which docx paragraph does each preview paragraph show?
+  const toDocx = new Map(alignKeys(before.map(key), paras.map(p => key(ownTextNodes(p).map(t => t.textContent).join('')))));
+  // 2) What did the user change? Walk the before/after alignment and fix gaps.
+  const anchors = [...alignKeys(before.map(key), after.map(key)), [before.length, after.length]];
+  let unapplied = 0, bi = 0, ai = 0, lastPara = null;
+  for (const [bEnd, aEnd] of anchors) {
+    const bs = [], as = [];
+    for (; bi < bEnd; bi++) bs.push(bi);
+    for (; ai < aEnd; ai++) as.push(ai);
+    const common = Math.min(bs.length, as.length);
+    for (let k = 0; k < common; k++) {
+      const p = paras[toDocx.get(bs[k])];
+      if (p) { setParaText(p, after[as[k]]); lastPara = p; } else unapplied++;
+    }
+    for (let k = common; k < as.length; k++) { // new lines typed in the preview
+      const ref = lastPara || paras[toDocx.get(bEnd)];
+      if (!ref) { unapplied++; continue; }
+      const clone = ref.cloneNode(true);
+      setParaText(clone, after[as[k]]);
+      if (lastPara) lastPara.after(clone); else ref.before(clone);
+      lastPara = clone;
+    }
+    for (let k = common; k < bs.length; k++) { // lines deleted in the preview
+      const p = paras[toDocx.get(bs[k])];
+      if (p) p.remove(); else unapplied++;
+    }
+    if (bEnd < before.length) { lastPara = paras[toDocx.get(bEnd)] || lastPara; bi = bEnd + 1; ai = aEnd + 1; }
+  }
+  zip.file('word/document.xml', new XMLSerializer().serializeToString(doc));
+  return { blob: await zip.generateAsync({ type: 'blob', mimeType: DOCX_MIME, compression: 'DEFLATE' }), unapplied };
+}
+
+function openFillPreview(out, onDownload) {
+  const edited = new Set();
+  const baseline = [];
+  const pm = modal({
+    title: 'Preview',
+    sub: 'Highlighted text is what will be filled in. Click <b>Edit</b> on a document to fix anything before downloading.',
+    wide: true,
+    extraClass: 'fill-preview',
+    headTools: `<button type="button" class="btn fill-zoom-btn" data-zoom hidden title="Switch between fit-to-screen and actual size">100%</button>`,
+    body: `
+      <div class="fill-preview-body">
+        ${out.map((o, i) => `
+          <section class="fill-doc">
+            <div class="fill-doc-head">
+              ${fileIcon(o.name)}<span class="fill-name">${esc(o.name)}</span>
+              <span class="fill-status ${o.count ? 'ok' : 'bad'}">${o.count ? plural(o.count, 'replacement') : 'No placeholders'}</span>
+              <span class="fill-edited" data-edited="${i}" hidden>Edited</span>
+              <button type="button" class="btn fill-edit-btn" data-edit-doc="${i}" disabled>${icon('edit')} Edit</button>
+            </div>
+            <div class="fill-doc-body" data-i="${i}"><div class="spin">Rendering…</div></div>
+          </section>`).join('')}
+      </div>`,
+    foot: `<button class="btn" data-close>Back</button><button class="btn primary" data-dl>${icon('download')} Download</button>`,
+  });
+  const hostOf = (i) => pm.el.querySelector(`[data-i="${i}"]`);
+  // Editable parts: each rendered Word page, or the text block.
+  const editables = (i) => [...hostOf(i).querySelectorAll('section.docx, pre.fill-text')];
+
+  pm.el.querySelectorAll('[data-edit-doc]').forEach(btn => btn.onclick = () => {
+    const i = +btn.dataset.editDoc;
+    const on = !btn.classList.contains('active');
+    btn.classList.toggle('active', on);
+    btn.innerHTML = on ? `${icon('check')} Done` : `${icon('edit')} Edit`;
+    hostOf(i).classList.toggle('editing', on);
+    editables(i).forEach(el => {
+      if (on) el.setAttribute('contenteditable', 'true'); else el.removeAttribute('contenteditable');
+    });
+    if (on) {
+      try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch {}
+      editables(i)[0]?.focus();
+    }
+  });
+
+  $('[data-dl]', pm.el).onclick = () => {
+    const items = out.map((o, i) => {
+      const host = hostOf(i);
+      const ready = !!host.querySelector('section.docx, pre.fill-text');
+      if (!ready) return { name: o.name, edited: false }; // never rendered: fall back to a fresh fill
+      if (o.text != null) return { name: o.name, edited: edited.has(i), text: host.querySelector('pre.fill-text').innerText };
+      return { name: o.name, edited: edited.has(i), rendered: snapshotPreview(host), before: baseline[i], after: previewParaTexts(host) };
+    });
+    pm.close();
+    onDownload(items);
+  };
+
+  // Scale Word pages down to fit narrow screens (phones).
+  let fitOn = true;
+  const zoomBtn = $('[data-zoom]', pm.el);
+  const fit = () => pm.el.querySelectorAll('.fill-doc-body').forEach(host => {
+    const wrap = host.querySelector('.docx-wrapper');
+    const sec = wrap?.querySelector('section.docx');
+    if (!sec) return;
+    wrap.style.zoom = '';
+    const pad = parseFloat(getComputedStyle(wrap).paddingLeft) * 2 || 0;
+    const z = Math.min(1, host.clientWidth / (sec.offsetWidth + pad));
+    if (z < 0.98) zoomBtn.hidden = false; // only offer the toggle when pages are shrunk
+    if (fitOn && z < 1) wrap.style.zoom = z.toFixed(3);
+  });
+  zoomBtn.onclick = () => {
+    fitOn = !fitOn;
+    zoomBtn.textContent = fitOn ? '100%' : 'Fit';
+    fit();
+  };
+  const ro = new ResizeObserver(() => fit());
+  ro.observe($('.fill-preview-body', pm.el));
+
+  out.forEach(async (o, i) => {
+    const host = pm.el.querySelector(`[data-i="${i}"]`);
+    try {
+      if (o.text != null) host.innerHTML = `<pre class="fill-text">${esc(o.text)}</pre>`;
+      else {
+        host.replaceChildren();
+        await window.docx.renderAsync(await o.blob.arrayBuffer(), host, null, {
+          inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true, useBase64URL: true,
+        });
+      }
+      highlightMarks(host);
+      fit();
+      baseline[i] = previewParaTexts(host);
+      host.addEventListener('input', () => { edited.add(i); $(`[data-edited="${i}"]`, pm.el).hidden = false; });
+      $(`[data-edit-doc="${i}"]`, pm.el).disabled = false;
+    } catch {
+      host.innerHTML = '<div class="spin">Could not render this document.</div>';
+    }
+  });
+}
+
+function openFillDialog(preselect = null) {
+  const files = (state.data?.files || []).filter(f => canFill(f.name));
+  if (!files.length) return toastError('No Word (.docx) or text files in this folder');
+  const prefs = loadFillPrefs();
+  const isChecked = (n) => preselect ? n === preselect : ext(n) === 'docx';
+
+  const m = modal({
+    title: 'Fill Name & USN',
+    extraClass: 'fill-dialog',
+    sub: 'Downloads filled-in copies — the original files are not changed.',
+    body: `
+      <div class="modal-body fill-body">
+        <div class="fill-grid">
+          <div class="field"><label>Name</label><input class="input" data-f="name" value="${esc(prefs.name)}" placeholder="e.g. Rahul Sharma" spellcheck="false"></div>
+          <div class="field"><label>USN</label><input class="input" data-f="usn" value="${esc(prefs.usn)}" placeholder="e.g. 1XX21CS001" spellcheck="false"></div>
+        </div>
+        <details class="fill-keys">
+          <summary>Placeholders to replace: <code>${esc(prefs.nameKey)}</code> and <code>${esc(prefs.usnKey)}</code></summary>
+          <div class="fill-grid">
+            <div class="field"><label>Name placeholder in document</label><input class="input" data-f="nameKey" value="${esc(prefs.nameKey)}" spellcheck="false"></div>
+            <div class="field"><label>USN placeholder in document</label><input class="input" data-f="usnKey" value="${esc(prefs.usnKey)}" spellcheck="false"></div>
+          </div>
+          <p class="fill-note">Exact, case-sensitive text. Every occurrence is replaced, including headers and footers.</p>
+        </details>
+        <div class="field">
+          <label>Save as</label>
+          <div class="fill-format">
+            <label class="fill-check"><input type="radio" name="fillFmt" value="pdf" ${prefs.format !== 'orig' ? 'checked' : ''}> <span>One PDF — each document starts on a new page</span></label>
+            <label class="fill-check"><input type="radio" name="fillFmt" value="orig" ${prefs.format === 'orig' ? 'checked' : ''}> <span>Separate files in their original format (.docx / text)</span></label>
+          </div>
+        </div>
+        <div class="fill-list-head">
+          <label class="fill-check"><input type="checkbox" data-all> <span>Files</span></label>
+          <span class="fill-count"></span>
+        </div>
+        <div class="fill-scan"><span class="fill-scan-msg">Checking files for placeholders…</span> <button type="button" class="link-btn" data-only-found hidden>Select only these</button></div>
+        <div class="fill-list">
+          ${files.map(f => `
+            <label class="fill-check fill-row">
+              <input type="checkbox" data-file="${esc(f.name)}" ${isChecked(f.name) ? 'checked' : ''}>
+              ${fileIcon(f.name)}<span class="fill-name" title="${esc(f.name)}">${esc(f.name)}</span>
+              <span class="fill-status" data-status="${esc(f.name)}"></span>
+              <span class="fill-size">${fmtSize(f.size)}</span>
+            </label>`).join('')}
+        </div>
+      </div>`,
+    foot: `<button class="btn" data-close>Cancel</button><button class="btn" data-preview>${icon('eye')} Preview</button><button class="btn primary" data-ok>${icon('download')} Fill &amp; download</button>`,
+  });
+
+  const val = (k) => $(`[data-f="${k}"]`, m.el).value;
+  const boxes = [...m.el.querySelectorAll('[data-file]')];
+  const all = $('[data-all]', m.el);
+  const okBtn = $('[data-ok]', m.el);
+  const sync = () => {
+    const n = boxes.filter(b => b.checked).length;
+    all.checked = n === boxes.length;
+    all.indeterminate = n > 0 && n < boxes.length;
+    $('.fill-count', m.el).textContent = `${n} of ${boxes.length} selected`;
+    okBtn.disabled = n === 0;
+    $('[data-preview]', m.el).disabled = n === 0;
+  };
+  boxes.forEach(b => b.addEventListener('change', sync));
+  all.addEventListener('change', () => { boxes.forEach(b => (b.checked = all.checked)); sync(); });
+  sync();
+  setTimeout(() => $('[data-f="name"]', m.el).focus());
+
+  // --- Placeholder check: fetch each file once, then count occurrences. ---
+  const fileData = new Map(); // name -> Promise<ArrayBuffer | string>
+  const getData = (name) => {
+    if (!fileData.has(name)) {
+      const p = fetch(fileUrl([...state.path, name])).then(res => {
+        if (!res.ok) throw new Error(`Could not load "${name}"`);
+        return ext(name) === 'docx' ? res.arrayBuffer() : res.text();
+      });
+      p.catch(() => fileData.delete(name)); // allow a retry next time
+      fileData.set(name, p);
+    }
+    return fileData.get(name);
+  };
+  const found = new Set();
+  let scanId = 0;
+  const scan = async () => {
+    const id = ++scanId;
+    const keys = [val('nameKey'), val('usnKey')];
+    const labels = ['Name', 'USN'];
+    const msg = $('.fill-scan-msg', m.el), onlyBtn = $('[data-only-found]', m.el);
+    found.clear();
+    onlyBtn.hidden = true;
+    if (!keys[0] && !keys[1]) { msg.textContent = 'Enter a placeholder to check for.'; return; }
+    msg.textContent = 'Checking files for placeholders…';
+    let done = 0;
+    await Promise.all(files.map(async (f) => {
+      const el = m.el.querySelector(`[data-status="${CSS.escape(f.name)}"]`);
+      el.className = 'fill-status'; el.textContent = '…'; el.title = '';
+      let counts;
+      try { counts = await countPlaceholders(f.name, await getData(f.name), keys); }
+      catch { counts = null; }
+      if (id !== scanId) return; // a newer scan started
+      done++;
+      if (!counts) { el.className = 'fill-status bad'; el.textContent = 'Unreadable'; return; }
+      const have = labels.filter((_, i) => keys[i] && counts[i]);
+      const want = labels.filter((_, i) => keys[i]);
+      el.title = labels.map((l, i) => keys[i] ? `${keys[i]}: ${counts[i]}×` : '').filter(Boolean).join(' · ');
+      if (!have.length) { el.className = 'fill-status bad'; el.textContent = 'No placeholders'; return; }
+      found.add(f.name);
+      if (have.length === want.length) { el.className = 'fill-status ok'; el.textContent = `✓ ${have.join(' + ')}`; }
+      else { el.className = 'fill-status warn'; el.textContent = `${have.join(', ')} only`; }
+    }));
+    if (id !== scanId) return;
+    msg.textContent = `${found.size} of ${files.length} ${files.length === 1 ? 'file contains' : 'files contain'} placeholders.`;
+    onlyBtn.hidden = !found.size || found.size === files.length;
+  };
+  $('[data-only-found]', m.el).onclick = () => { boxes.forEach(b => (b.checked = found.has(b.dataset.file))); sync(); };
+  let scanTimer;
+  ['nameKey', 'usnKey'].forEach(k => $(`[data-f="${k}"]`, m.el).addEventListener('input', () => {
+    clearTimeout(scanTimer); scanTimer = setTimeout(scan, 400);
+  }));
+  scan();
+
+  const previewBtn = $('[data-preview]', m.el);
+  const busy = (on, text) => {
+    okBtn.disabled = previewBtn.disabled = on;
+    if (on) okBtn.textContent = text;
+    else { okBtn.innerHTML = okLabel; sync(); }
+  };
+  const okLabel = okBtn.innerHTML;
+
+  // Reads the form; returns null (and focuses Name) when nothing to fill.
+  const collect = () => {
+    const format = $('input[name="fillFmt"]:checked', m.el)?.value || 'pdf';
+    const p = { name: val('name').trim(), usn: val('usn').trim(), nameKey: val('nameKey'), usnKey: val('usnKey'), format };
+    if (!p.name && !p.usn) { $('[data-f="name"]', m.el).focus(); return null; }
+    saveFillPrefs(p);
+    const pairs = [];
+    if (p.nameKey && p.name) pairs.push([p.nameKey, p.name]);
+    if (p.usnKey && p.usn) pairs.push([p.usnKey, p.usn]);
+    return { p, pairs, selected: boxes.filter(b => b.checked).map(b => b.dataset.file) };
+  };
+
+  const fillAll = async (selected, pairs) => {
+    const out = [];
+    for (const [i, name] of selected.entries()) {
+      busy(true, `Filling ${i + 1}/${selected.length}…`);
+      const data = await getData(name);
+      const r = ext(name) === 'docx'
+        ? await fillDocx(data, pairs).catch(() => { throw new Error(`"${name}" is not a valid .docx file`); })
+        : fillText(data, pairs);
+      out.push({ name, blob: r.blob, text: r.text, count: r.count });
+    }
+    return out;
+  };
+
+  // `fromPreview` (optional) holds what the preview showed, including edits.
+  const download = async ({ p, pairs, selected }, fromPreview = null) => {
+    let out = await fillAll(selected, pairs);
+    let unapplied = 0;
+    const missed = out.filter(o => !o.count && !fromPreview?.find(v => v.name === o.name)?.edited).map(o => o.name);
+    if (fromPreview) {
+      const view = new Map(fromPreview.map(v => [v.name, v]));
+      out = await Promise.all(out.map(async (o) => {
+        const v = view.get(o.name);
+        if (!v) return o;
+        if (v.text != null) {
+          return { ...o, text: v.text, blob: v.edited ? new Blob([v.text], { type: 'text/plain;charset=utf-8' }) : o.blob };
+        }
+        if (!v.rendered) return o;
+        // PDF pages come from the preview itself; a separate .docx is only
+        // rebuilt from the preview when it was edited.
+        let blob = o.blob;
+        if (v.edited && p.format !== 'pdf') {
+          const r = await applyPreviewEdits(o.blob, v.before, v.after);
+          blob = r.blob;
+          unapplied += r.unapplied;
+        }
+        return { ...o, blob, rendered: v.rendered };
+      }));
+    }
+    const safe = (s) => s.replace(/[\\/:*?"<>|]+/g, '_');
+    if (p.format === 'pdf') {
+      const pdfBlob = await buildFilledPdf(out, (i, n) => busy(true, `Making PDF ${i}/${n}…`));
+      const base = out.length === 1
+        ? out[0].name.replace(/\.[^.]+$/, '')
+        : `${state.path.at(-1) || 'Files'}_${p.usn || p.name}`;
+      saveBlob(pdfBlob, `${safe(base)}.pdf`);
+    } else {
+      // Separate downloads (no zip); a short gap keeps browsers from dropping some.
+      for (const o of out) {
+        saveBlob(o.blob, o.name);
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
+    m.close();
+    if (unapplied) {
+      toast(`Downloaded, but ${plural(unapplied, 'edit')} could not be copied into the Word file — use "One PDF" to keep every edit.`, { error: true, sticky: true });
+    } else if (missed.length) {
+      toast(`Downloaded ${plural(out.length, 'file')}, but no placeholders were found in: ${missed.join(', ')}`, { error: true, sticky: missed.length === out.length });
+    } else toast(p.format === 'pdf' ? `PDF ready — ${plural(out.length, 'document')}` : `Downloaded ${plural(out.length, 'filled file')}`);
+  };
+
+  okBtn.onclick = async () => {
+    const job = collect();
+    if (!job) return;
+    try { await download(job); }
+    catch (err) { toastError(err.message); busy(false); }
+  };
+
+  previewBtn.onclick = async () => {
+    const job = collect();
+    if (!job) return;
+    try {
+      // Wrap each replacement in private-use sentinels so the preview can
+      // highlight exactly what changed (and nothing that was already there).
+      const marked = job.pairs.map(([f, r]) => [f, `${MARK_OPEN}${r}${MARK_CLOSE}`]);
+      const out = await fillAll(job.selected, marked);
+      busy(false);
+      openFillPreview(out, (items) => download(job, items).catch(err => { toastError(err.message); busy(false); }));
+    } catch (err) { toastError(err.message); busy(false); }
+  };
 }
 
 async function copy(str, msg) {
