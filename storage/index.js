@@ -49,19 +49,6 @@ function createStorage(env, rootDir) {
   s.cache = cache;
   s.invalidatePath = invalidatePath;
 
-  let pingStatus = null;
-  s.ping = async () => {
-    try {
-      const res = await backend.ping();
-      pingStatus = { ok: true, at: Date.now(), error: null };
-      return res;
-    } catch (err) {
-      pingStatus = { ok: false, at: Date.now(), error: err.message };
-      throw err;
-    }
-  };
-  s.pingStatus = () => pingStatus;
-
   // Folder exists check (cached for 12h)
   s.folderExists = async (parts) => {
     const key = `fexists:${toKey(parts)}`;
@@ -219,7 +206,6 @@ function createStorage(env, rootDir) {
   s.totalSize = totalSize;
 
   // Usage cached for 12 hours (Redis & memory)
-  s.touch = () => { cache.del('usage'); };
   s.usage = async () => {
     const hit = await cache.getJson('usage');
     if (hit) return hit;

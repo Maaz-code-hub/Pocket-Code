@@ -4,6 +4,7 @@ const http = require('node:http');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const zlib = require('node:zlib');
 const { httpError, isReserved, streamToBuffer } = require('./storage/util');
 const { createStorage, TRASH_DAYS } = require('./storage');
 const { createZip } = require('./storage/zip');
@@ -497,20 +498,43 @@ async function handleApi(req, res, url) {
   throw httpError(404, 'Not found');
 }
 
+// Static files are kept in memory with pre-compressed copies (brotli/gzip) and
+// an ETag, so repeat visits get a tiny 304 and first visits ~4x less data.
+// File names aren't content-hashed, so browsers must revalidate (no-cache).
+const staticCache = new Map(); // absolute path -> { mtimeMs, type, etag, raw, br, gz }
+async function loadStatic(fp) {
+  const st = await fsp.stat(fp);
+  if (!st.isFile()) throw httpError(404, 'Not found');
+  const hit = staticCache.get(fp);
+  if (hit && hit.mtimeMs === st.mtimeMs) return hit;
+  const raw = await fsp.readFile(fp);
+  const type = MIME[path.extname(fp).toLowerCase()] || 'application/octet-stream';
+  const entry = { mtimeMs: st.mtimeMs, type, raw, etag: `"${crypto.createHash('sha1').update(raw).digest('base64url').slice(0, 20)}"` };
+  if (raw.length > 1024 && /^(text\/|application\/json|image\/svg)/.test(type)) {
+    entry.br = zlib.brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11 } });
+    entry.gz = zlib.gzipSync(raw, { level: 9 });
+  }
+  staticCache.set(fp, entry);
+  return entry;
+}
+
 async function serveStatic(req, res, pathname) {
   const rel = pathname === '/' ? 'index.html' : pathname.slice(1);
   const fp = path.resolve(PUBLIC_DIR, rel);
   if (!fp.startsWith(PUBLIC_DIR + path.sep)) return send(res, 404, 'Not found');
-  try {
-    const data = await fsp.readFile(fp);
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(fp)] || 'application/octet-stream' });
-    res.end(data);
-  } catch {
-    // SPA fallback
-    const html = await fsp.readFile(path.join(PUBLIC_DIR, 'index.html'));
-    res.writeHead(200, { 'Content-Type': MIME['.html'] });
-    res.end(html);
-  }
+  let file;
+  try { file = await loadStatic(fp); }
+  catch { file = await loadStatic(path.join(PUBLIC_DIR, 'index.html')); } // SPA fallback
+
+  const headers = { 'Content-Type': file.type, ETag: file.etag, 'Cache-Control': 'no-cache', Vary: 'Accept-Encoding' };
+  if (req.headers['if-none-match'] === file.etag) { res.writeHead(304, headers); return res.end(); }
+  const accept = req.headers['accept-encoding'] || '';
+  let body = file.raw;
+  if (file.br && /\bbr\b/.test(accept)) { body = file.br; headers['Content-Encoding'] = 'br'; }
+  else if (file.gz && /\bgzip\b/.test(accept)) { body = file.gz; headers['Content-Encoding'] = 'gzip'; }
+  headers['Content-Length'] = body.length;
+  res.writeHead(200, headers);
+  res.end(body);
 }
 
 async function requestHandler(req, res) {

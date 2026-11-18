@@ -3,7 +3,6 @@
 // file metadata, existence checks, usage totals, and small files with a configurable
 // TTL (default: 12 hours). When files or folders are modified, affected cache keys
 // are immediately invalidated to maintain consistency.
-const { Readable } = require('node:stream');
 const Redis = require('ioredis');
 
 const DEFAULT_TTL_HOURS = 12;

@@ -51,8 +51,9 @@ Everything runs in your browser — the stored originals are never modified. You
 - **Backend**: Node.js HTTP server / Netlify Serverless Functions (`serverless-http`)
 - **Storage**: Supabase Storage (S3-compatible) or local disk
 - **Cache**: Upstash Redis (`ioredis`) with automatic in-memory fallback
-- **Frontend**: Vanilla ES6+, CSS variables, CodeMirror, Quill-based Word workspace
-- **Documents & PDF**: JSZip, docx-preview, html2canvas + jsPDF (loaded on demand for PDF export)
+- **Frontend**: Vanilla ES6+, CSS variables, CodeMirror (code editor), SuperDoc (Word editor)
+- **Documents & PDF**: JSZip, docx-preview, mammoth, html2canvas + jsPDF
+- **Loading**: every library is fetched on first use, so the first page load is just `app.js` + `style.css`
 
 ---
 

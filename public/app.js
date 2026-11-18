@@ -23,12 +23,6 @@ const ICONS = {
   cut: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>',
   paste: '<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
   move: '<path d="M5 12h14M13 6l6 6-6 6"/><path d="M5 7v10"/>',
-  folderMove: '<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M11 13h6M14 10l3 3-3 3"/>',
-  gridMode: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
-  listMode: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
-  sort: '<path d="M7 15l5 5 5-5M7 9l5-5 5 5"/>',
-  sortAsc: '<path d="M12 19V5M5 12l7-7 7 7"/>',
-  sortDesc: '<path d="M12 5v14M19 12l-7 7-7-7"/>',
   file: '<path d="M14 3H6a1 1 0 00-1 1v16a1 1 0 001 1h12a1 1 0 001-1V8z"/><path d="M14 3v5h5"/>',
   code: '<path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/>',
   chevron: '<path d="M9 6l6 6-6 6"/>',
@@ -148,6 +142,46 @@ const folderApi = (parts) => `/folders${parts.length ? `/${joinPath(parts)}` : '
 const fileUrl = (parts) => `/api/files/${joinPath(parts)}`;
 const zipUrl = (parts) => `/api/zip/${joinPath(parts)}`;
 
+/* ---------- Libraries (loaded on first use) ----------
+   Nothing here blocks the first paint: each feature calls need(...) before
+   using its library. Scripts are inserted with async=false, so they download
+   in parallel but run in order (e.g. JSZip before docx-preview). */
+const CDNJS = 'https://cdnjs.cloudflare.com/ajax/libs';
+const CM = `${CDNJS}/codemirror/5.65.16`;
+const LIBS = {
+  purify: [`${CDNJS}/dompurify/3.1.6/purify.min.js`],
+  marked: [`${CDNJS}/marked/12.0.2/marked.min.js`],
+  hljs: [`${CDNJS}/highlight.js/11.9.0/highlight.min.js`],
+  docx: [`${CDNJS}/jszip/3.10.1/jszip.min.js`, 'https://cdn.jsdelivr.net/npm/docx-preview@0.3.4/dist/docx-preview.min.js'],
+  mammoth: [`${CDNJS}/mammoth/1.6.0/mammoth.browser.min.js`],
+  pdf: [`${CDNJS}/html2canvas/1.4.1/html2canvas.min.js`, `${CDNJS}/jspdf/2.5.1/jspdf.umd.min.js`],
+  cm: [`${CM}/codemirror.min.js`, ...['mode/meta', 'addon/mode/loadmode', 'addon/mode/simple', 'addon/mode/overlay',
+    'addon/edit/closebrackets', 'addon/edit/matchbrackets', 'addon/selection/active-line', 'addon/comment/comment',
+    'addon/dialog/dialog', 'addon/search/searchcursor', 'addon/search/search'].map(p => `${CM}/${p}.min.js`)],
+};
+const LIB_CSS = {
+  hljs: [[`${CDNJS}/highlight.js/11.9.0/styles/github.min.css`, '(prefers-color-scheme: light)'],
+         [`${CDNJS}/highlight.js/11.9.0/styles/github-dark.min.css`, '(prefers-color-scheme: dark)']],
+  cm: [[`${CM}/codemirror.min.css`], [`${CM}/addon/dialog/dialog.min.css`]],
+};
+const loadedScripts = {};
+function loadScript(src) {
+  return (loadedScripts[src] ||= new Promise((resolve, reject) => {
+    const s = Object.assign(document.createElement('script'), { src, async: false });
+    s.onload = () => resolve();
+    s.onerror = () => { delete loadedScripts[src]; s.remove(); reject(new Error('Could not load a required library — check your connection')); };
+    document.head.appendChild(s);
+  }));
+}
+function loadCss(href, media = 'all') {
+  if (document.querySelector(`link[href="${href}"]`)) return;
+  document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'stylesheet', href, media }));
+}
+function need(...names) {
+  names.forEach(n => (LIB_CSS[n] || []).forEach(([href, media]) => loadCss(href, media)));
+  return Promise.all(names.flatMap(n => LIBS[n]).map(loadScript));
+}
+
 /* ---------- Permissions ---------- */
 const perms = { editLocked: false, canEdit: true };
 
@@ -196,7 +230,8 @@ async function loadUsage() {
 const scheduleUsage = () => { clearTimeout(usageTimer); usageTimer = setTimeout(loadUsage, 1200); };
 
 /* ---------- Modal ---------- */
-function modal({ title = '', sub = '', body = '', foot = '', wide = false, extraClass = '', noHead = false, headTools = '', onClose }) {
+// `sticky`: Escape and clicks outside don't close it (for editors with unsaved work).
+function modal({ title = '', sub = '', body = '', foot = '', wide = false, extraClass = '', noHead = false, headTools = '', onClose, sticky = false }) {
   const bg = document.createElement('div');
   bg.className = 'modal-bg' + (extraClass ? ` bg-${extraClass}` : '');
   bg.innerHTML = `
@@ -216,11 +251,11 @@ function modal({ title = '', sub = '', body = '', foot = '', wide = false, extra
     bg.remove(); document.removeEventListener('keydown', onKey); onClose?.();
   };
   const onKey = (e) => {
-    if (e.key !== 'Escape' || [...document.querySelectorAll('.modal-bg')].at(-1) !== bg) return;
+    if (sticky || e.key !== 'Escape' || [...document.querySelectorAll('.modal-bg')].at(-1) !== bg) return;
     if (document.querySelector('.CodeMirror-dialog')) return; // let the editor's search box close first
     close();
   };
-  bg.addEventListener('mousedown', (e) => { if (e.target === bg) close(); });
+  bg.addEventListener('mousedown', (e) => { if (e.target === bg && !sticky) close(); });
   bg.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', close));
   document.addEventListener('keydown', onKey);
   document.body.appendChild(bg);
@@ -702,7 +737,7 @@ function showContextMenu(e, item = null) {
   e.preventDefault();
   closeContextMenu();
   const menu = document.createElement('div');
-  menu.className = 'context-menu';
+  menu.className = 'ctx-menu';
   menu.id = 'contextMenu';
 
   if (item) selectedItem = item;
@@ -710,49 +745,49 @@ function showContextMenu(e, item = null) {
   let itemsHtml = '';
   if (item?.type === 'file') {
     itemsHtml = `
-      <button class="context-menu-item" data-cact="preview">${icon('code')} Open preview</button>
-      <button class="context-menu-item" data-cact="download">${icon('download')} Download</button>
-      ${canFill(item.name) ? `<button class="context-menu-item" data-cact="fill">${icon('edit')} Fill Name &amp; USN…</button>` : ''}
+      <button class="ctx-menu-item" data-cact="preview">${icon('code')} Open preview</button>
+      <button class="ctx-menu-item" data-cact="download">${icon('download')} Download</button>
+      ${canFill(item.name) ? `<button class="ctx-menu-item" data-cact="fill">${icon('edit')} Fill Name &amp; USN…</button>` : ''}
       ${perms.canEdit ? `
-        <div class="context-menu-divider"></div>
-        <button class="context-menu-item" data-cact="copy">${icon('copy')} Copy <span class="context-menu-shortcut">Ctrl+C</span></button>
-        <button class="context-menu-item" data-cact="duplicate">${icon('copy')} Duplicate <span class="context-menu-shortcut">Ctrl+D</span></button>
-        <button class="context-menu-item" data-cact="cut">${icon('cut')} Cut / Move <span class="context-menu-shortcut">Ctrl+X</span></button>
-        <button class="context-menu-item" data-cact="move">${icon('move')} Move to…</button>
-        <div class="context-menu-divider"></div>
-        <button class="context-menu-item" data-cact="rename">${icon('edit')} Rename <span class="context-menu-shortcut">F2</span></button>
-        <button class="context-menu-item danger" data-cact="delete">${icon('trash')} Move to Trash <span class="context-menu-shortcut">Del</span></button>
+        <div class="ctx-menu-divider"></div>
+        <button class="ctx-menu-item" data-cact="copy">${icon('copy')} Copy <span class="ctx-menu-shortcut">Ctrl+C</span></button>
+        <button class="ctx-menu-item" data-cact="duplicate">${icon('copy')} Duplicate <span class="ctx-menu-shortcut">Ctrl+D</span></button>
+        <button class="ctx-menu-item" data-cact="cut">${icon('cut')} Cut / Move <span class="ctx-menu-shortcut">Ctrl+X</span></button>
+        <button class="ctx-menu-item" data-cact="move">${icon('move')} Move to…</button>
+        <div class="ctx-menu-divider"></div>
+        <button class="ctx-menu-item" data-cact="rename">${icon('edit')} Rename <span class="ctx-menu-shortcut">F2</span></button>
+        <button class="ctx-menu-item danger" data-cact="delete">${icon('trash')} Move to Trash <span class="ctx-menu-shortcut">Del</span></button>
       ` : ''}
     `;
   } else if (item?.type === 'folder') {
     itemsHtml = `
-      <button class="context-menu-item" data-cact="open">${icon('folder')} Open folder</button>
-      <button class="context-menu-item" data-cact="zip">${icon('zip')} Download ZIP</button>
+      <button class="ctx-menu-item" data-cact="open">${icon('folder')} Open folder</button>
+      <button class="ctx-menu-item" data-cact="zip">${icon('zip')} Download ZIP</button>
       ${perms.canEdit ? `
-        <div class="context-menu-divider"></div>
-        <button class="context-menu-item" data-cact="copy">${icon('copy')} Copy <span class="context-menu-shortcut">Ctrl+C</span></button>
-        <button class="context-menu-item" data-cact="duplicate">${icon('copy')} Duplicate <span class="context-menu-shortcut">Ctrl+D</span></button>
-        <button class="context-menu-item" data-cact="cut">${icon('cut')} Cut / Move <span class="context-menu-shortcut">Ctrl+X</span></button>
-        <button class="context-menu-item" data-cact="move">${icon('move')} Move to…</button>
-        ${clipboard ? `<button class="context-menu-item" data-cact="pasteInto">${icon('paste')} Paste inside "${esc(item.name)}"</button>` : ''}
-        <div class="context-menu-divider"></div>
-        <button class="context-menu-item" data-cact="rename">${icon('edit')} Rename <span class="context-menu-shortcut">F2</span></button>
-        <button class="context-menu-item danger" data-cact="delete">${icon('trash')} Move to Trash <span class="context-menu-shortcut">Del</span></button>
+        <div class="ctx-menu-divider"></div>
+        <button class="ctx-menu-item" data-cact="copy">${icon('copy')} Copy <span class="ctx-menu-shortcut">Ctrl+C</span></button>
+        <button class="ctx-menu-item" data-cact="duplicate">${icon('copy')} Duplicate <span class="ctx-menu-shortcut">Ctrl+D</span></button>
+        <button class="ctx-menu-item" data-cact="cut">${icon('cut')} Cut / Move <span class="ctx-menu-shortcut">Ctrl+X</span></button>
+        <button class="ctx-menu-item" data-cact="move">${icon('move')} Move to…</button>
+        ${clipboard ? `<button class="ctx-menu-item" data-cact="pasteInto">${icon('paste')} Paste inside "${esc(item.name)}"</button>` : ''}
+        <div class="ctx-menu-divider"></div>
+        <button class="ctx-menu-item" data-cact="rename">${icon('edit')} Rename <span class="ctx-menu-shortcut">F2</span></button>
+        <button class="ctx-menu-item danger" data-cact="delete">${icon('trash')} Move to Trash <span class="ctx-menu-shortcut">Del</span></button>
       ` : ''}
     `;
   } else {
     itemsHtml = `
       ${perms.canEdit ? `
-        <button class="context-menu-item" data-cact="paste" ${!clipboard ? 'disabled' : ''}>
-          ${icon('paste')} Paste ${clipboard ? `"${esc(clipboard.name)}"` : ''} <span class="context-menu-shortcut">Ctrl+V</span>
+        <button class="ctx-menu-item" data-cact="paste" ${!clipboard ? 'disabled' : ''}>
+          ${icon('paste')} Paste ${clipboard ? `"${esc(clipboard.name)}"` : ''} <span class="ctx-menu-shortcut">Ctrl+V</span>
         </button>
-        <div class="context-menu-divider"></div>
-        <button class="context-menu-item" data-cact="newFolder">${icon('folderPlus')} New folder</button>
+        <div class="ctx-menu-divider"></div>
+        <button class="ctx-menu-item" data-cact="newFolder">${icon('folderPlus')} New folder</button>
         ${!state.path.length ? '' : `
-          <button class="context-menu-item" data-cact="uploadFiles">${icon('file')} Upload files</button>
-          <button class="context-menu-item" data-cact="uploadFolder">${icon('upload')} Upload folder</button>
-          <button class="context-menu-item" data-cact="newDocFile">${icon('word')} New Word doc</button>
-          <button class="context-menu-item" data-cact="newDoc">${icon('code')} New code / text file</button>
+          <button class="ctx-menu-item" data-cact="uploadFiles">${icon('file')} Upload files</button>
+          <button class="ctx-menu-item" data-cact="uploadFolder">${icon('upload')} Upload folder</button>
+          <button class="ctx-menu-item" data-cact="newDocFile">${icon('word')} New Word doc</button>
+          <button class="ctx-menu-item" data-cact="newDoc">${icon('code')} New code / text file</button>
         `}
       ` : ''}
     `;
@@ -827,7 +862,7 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   const tag = (e.target.tagName || '').toLowerCase();
-  if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable || e.target.closest('.CodeMirror') || e.target.closest('.ql-editor')) {
+  if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable || e.target.closest('.CodeMirror') || document.querySelector('.bg-wd-modal')) {
     return;
   }
 
@@ -1514,8 +1549,6 @@ window.addEventListener('drop', async (e) => {
 });
 
 /* ---------- Editor (CodeMirror) ---------- */
-CodeMirror.modeURL = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/%N/%N.min.js';
-
 function modeFor(name) {
   const lower = name.toLowerCase();
   const info = CodeMirror.findModeByFileName(name) || CodeMirror.findModeByFileName(lower)
@@ -1525,7 +1558,9 @@ function modeFor(name) {
 
 let wrapLines = (() => { try { return localStorage.getItem('wrap') === '1'; } catch { return false; } })();
 
-function openEditor(existing = null, content = '') {
+async function openEditor(existing = null, content = '') {
+  try { await need('cm'); } catch (e) { return toastError(e.message); }
+  CodeMirror.modeURL = `${CM}/mode/%N/%N.min.js`;
   const folder = state.path;
   const m = modal({
     title: existing ? `Edit ${existing}` : 'New doc / code',
@@ -1796,37 +1831,8 @@ function cleanDocHtml(html) {
   return cleaned.trim();
 }
 
-const getWrappedDocxHtml = (htmlContent) => `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #111111; }
-    h1 { font-size: 20pt; font-weight: bold; margin-bottom: 8pt; color: #1f4e79; }
-    h2 { font-size: 15pt; font-weight: bold; margin-bottom: 6pt; color: #2e75b6; }
-    h3 { font-size: 12.5pt; font-weight: bold; margin-bottom: 4pt; color: #5b9bd5; }
-    p { margin: 0 0 8pt 0; }
-    table { border-collapse: collapse; width: 100%; margin: 10pt 0; }
-    td, th { border: 1px solid #c0c0c0; padding: 6pt 8pt; vertical-align: top; }
-    th { background: #f2f5f9; font-weight: bold; color: #1f4e79; }
-    blockquote { border-left: 3pt solid #2e75b6; padding-left: 10pt; margin: 8pt 0; color: #555555; font-style: italic; }
-    hr { border: none; border-top: 1pt solid #d1d5db; margin: 12pt 0; }
-    .word-callout { background: #f0f6ff; border-left: 4pt solid #185abd; padding: 8pt 12pt; margin: 10pt 0; }
-  </style>
-</head>
-<body>
-  ${htmlContent}
-</body>
-</html>`;
-
 async function generateStandardDocx(htmlContent) {
-  if (!window.JSZip) {
-    if (window.htmlDocx && typeof window.htmlDocx.asBlob === 'function') {
-      return window.htmlDocx.asBlob(getWrappedDocxHtml(cleanDocHtml(htmlContent)));
-    }
-    throw new Error('ZIP library not ready');
-  }
-
+  await need('docx');
   const zip = new window.JSZip();
   const mediaFiles = [];
   let imgSeq = 0;
@@ -2241,44 +2247,45 @@ async function generateStandardDocx(htmlContent) {
   });
 }
 
-async function readDocFile(arrayBuffer, fileName = '') {
+// `withHtml: false` skips the (slow) mammoth HTML conversion of a normal
+// .docx; the preview only needs it when docx-preview can't draw the file.
+async function readDocFile(arrayBuffer, fileName = '', { withHtml = true } = {}) {
   const u8 = new Uint8Array(arrayBuffer);
   const isZip = u8[0] === 0x50 && u8[1] === 0x4b;
 
   if (isZip) {
-    if (window.JSZip) {
-      try {
-        const zip = await window.JSZip.loadAsync(arrayBuffer);
-        const mhtPath = Object.keys(zip.files).find(p => /(?:afchunk|altchunk|\.mht$)/i.test(p));
-        if (mhtPath) {
-          const mhtStr = await zip.files[mhtPath].async('string');
-          const parsed = parseMhtml(mhtStr);
-          if (parsed && parsed.trim().length > 0) {
-            return { type: 'html', html: cleanDocHtml(parsed), source: 'mhtml-chunk' };
-          }
+    await need(...(withHtml ? ['docx', 'mammoth'] : ['docx']));
+    try {
+      const zip = await window.JSZip.loadAsync(arrayBuffer);
+      const mhtPath = Object.keys(zip.files).find(p => /(?:afchunk|altchunk|\.mht$)/i.test(p));
+      if (mhtPath) {
+        const mhtStr = await zip.files[mhtPath].async('string');
+        const parsed = parseMhtml(mhtStr);
+        if (parsed && parsed.trim().length > 0) {
+          return { type: 'html', html: cleanDocHtml(parsed), source: 'mhtml-chunk' };
         }
+      }
 
-        const docXmlEntry = zip.files['word/document.xml'];
-        if (docXmlEntry) {
-          const docXml = await docXmlEntry.async('string');
-          if (docXml.includes('w:altChunk') && !docXml.includes('<w:p>') && !docXml.includes('<w:p ')) {
-            for (const path of Object.keys(zip.files)) {
-              if (path.startsWith('word/') && (path.endsWith('.mht') || path.endsWith('.htm') || path.endsWith('.html'))) {
-                const chunkStr = await zip.files[path].async('string');
-                const html = parseMhtml(chunkStr) || chunkStr;
-                if (html && html.trim().length > 0) {
-                  return { type: 'html', html: cleanDocHtml(html), source: 'altchunk-file' };
-                }
+      const docXmlEntry = zip.files['word/document.xml'];
+      if (docXmlEntry) {
+        const docXml = await docXmlEntry.async('string');
+        if (docXml.includes('w:altChunk') && !docXml.includes('<w:p>') && !docXml.includes('<w:p ')) {
+          for (const path of Object.keys(zip.files)) {
+            if (path.startsWith('word/') && (path.endsWith('.mht') || path.endsWith('.htm') || path.endsWith('.html'))) {
+              const chunkStr = await zip.files[path].async('string');
+              const html = parseMhtml(chunkStr) || chunkStr;
+              if (html && html.trim().length > 0) {
+                return { type: 'html', html: cleanDocHtml(html), source: 'altchunk-file' };
               }
             }
           }
         }
-      } catch (zipErr) {
-        console.warn('JSZip reading error:', zipErr);
       }
+    } catch (zipErr) {
+      console.warn('JSZip reading error:', zipErr);
     }
 
-    if (window.mammoth && typeof window.mammoth.convertToHtml === 'function') {
+    if (withHtml) {
       try {
         const res = await window.mammoth.convertToHtml({ arrayBuffer });
         if (res && res.value && res.value.trim().length > 0) {
@@ -3297,6 +3304,140 @@ async function openDocEditor(existing = null, initialHtml = '') {
   });
 }
 
+/* ---------- Word editor (SuperDoc) ----------
+   Real .docx editing in the browser: the file is opened and saved as Word XML,
+   so fonts, styles, tables, lists, headers/footers and page setup survive.
+   SuperDoc 1.x (AGPL-3.0, fully open source) is loaded only when needed. */
+const SUPERDOC_CDN = 'https://cdn.jsdelivr.net/npm/superdoc@1.47.2/dist';
+// Metric-compatible stand-ins for Word fonts (Carlito for Calibri, etc.).
+const SUPERDOC_FONTS = 'https://cdn.jsdelivr.net/npm/@superdoc-dev/fonts@0.5.0/assets/';
+let superDocReady = null;
+// The CDN build's global `SuperDoc` is the editor class itself (other exports hang off it).
+const superDocClass = () => {
+  const g = window.SuperDoc;
+  return typeof g === 'function' ? g : (typeof g?.SuperDoc === 'function' ? g.SuperDoc : null);
+};
+function loadSuperDoc() {
+  if (superDocClass()) return Promise.resolve(superDocClass());
+  return (superDocReady ||= new Promise((resolve, reject) => {
+    if (!document.querySelector('link[data-superdoc]')) {
+      const css = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: `${SUPERDOC_CDN}/style.css` });
+      css.dataset.superdoc = '';
+      document.head.appendChild(css);
+    }
+    const s = Object.assign(document.createElement('script'), { src: `${SUPERDOC_CDN}/superdoc.min.js` });
+    const fail = (msg) => { superDocReady = null; s.remove(); reject(new Error(msg)); };
+    s.onload = () => superDocClass() ? resolve(superDocClass()) : fail('The Word editor did not start');
+    s.onerror = () => fail('Could not load the Word editor — check your connection');
+    document.head.appendChild(s);
+  }));
+}
+
+let wordEditorSeq = 0;
+// Opens `name` (in the current folder) for editing. `buffer` is the file's
+// bytes if already fetched. Throws if the editor can't be loaded.
+async function openWordEditor(name, buffer = null) {
+  const folder = state.path;
+  const parts = [...folder, name];
+  const [SuperDocCls, bytes] = await Promise.all([
+    loadSuperDoc(),
+    buffer || fetch(fileUrl(parts)).then(r => { if (!r.ok) throw new Error('Could not load file'); return r.arrayBuffer(); }),
+  ]);
+
+  const id = ++wordEditorSeq;
+  let sd = null, dirty = false, ready = false, saving = false;
+  const m = modal({
+    noHead: true,
+    sticky: true,
+    extraClass: 'wd-modal',
+    onClose: () => { try { sd?.destroy(); } catch {} },
+    body: `
+      <div class="wd-app">
+        <div class="wd-bar">
+          <span class="wd-file">${fileIcon(name)}<span class="wd-name" title="${esc(name)}">${esc(name)}</span></span>
+          <span class="wd-state" data-state>Loading…</span>
+          <span class="wd-bar-actions">
+            <button type="button" class="btn" data-sd-dl title="Download a copy with your changes">${icon('download')}<span>Download</span></button>
+            <button type="button" class="btn primary" data-sd-save disabled>${icon('save')}<span>Save</span></button>
+            <button type="button" class="icon-btn" data-sd-close title="Close">${icon('close')}</button>
+          </span>
+        </div>
+        <div class="wd-toolbar" id="sdToolbar${id}"></div>
+        <div class="wd-doc"><div id="sdEditor${id}"></div></div>
+      </div>`,
+  });
+  const stateEl = $('[data-state]', m.el);
+  const saveBtn = $('[data-sd-save]', m.el);
+  const setState = (t, cls = '') => { stateEl.textContent = t; stateEl.className = `wd-state ${cls}`; };
+
+  const close = async () => {
+    if (dirty && !await confirmDialog({ title: 'Discard changes?', message: `Your changes to <b>${esc(name)}</b> haven’t been saved.`, confirm: 'Discard' })) return;
+    m.close();
+  };
+  $('[data-sd-close]', m.el).onclick = close;
+  const onKey = (e) => {
+    if (!m.el.isConnected) return document.removeEventListener('keydown', onKey, true);
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); e.stopPropagation(); save(); }
+  };
+  document.addEventListener('keydown', onKey, true);
+
+  const exportDocx = () => sd.export({ exportType: ['docx'], triggerDownload: false });
+
+  async function save() {
+    if (!ready || saving) return;
+    saving = true; saveBtn.disabled = true; setState('Saving…');
+    try {
+      const blob = await exportDocx();
+      await uploadOne(parts, new File([blob], name, { type: DOCX_MIME }), { overwrite: true });
+      dirty = false;
+      setState('Saved', 'ok');
+      toast('Document saved');
+      changed();
+    } catch (e) {
+      setState('Not saved', 'bad');
+      toastError(e.message || 'Failed to save document');
+    } finally {
+      saving = false; saveBtn.disabled = false;
+    }
+  }
+  saveBtn.onclick = save;
+  $('[data-sd-dl]', m.el).onclick = async () => {
+    if (!ready) return;
+    try { saveBlob(await exportDocx(), name); }
+    catch (e) { toastError('Could not export: ' + (e.message || e)); }
+  };
+
+  try {
+    sd = new SuperDocCls({
+      selector: `#sdEditor${id}`,
+      toolbar: `#sdToolbar${id}`,
+      document: new File([bytes], name, { type: DOCX_MIME }),
+      documentMode: 'editing',
+      contained: true,
+      // Never send usage data about the user's documents to a third party.
+      telemetry: { enabled: false },
+      fonts: { assetBaseUrl: SUPERDOC_FONTS },
+      // Shrink pages to fit phones; never enlarge past 100% on wide screens.
+      zoom: { mode: 'fit-width', fitWidth: { max: 100, padding: 16 } },
+      uiDisplayFallbackFont: "'Inter', system-ui, -apple-system, sans-serif",
+      onReady: () => {
+        ready = true; saveBtn.disabled = false; setState('');
+        // Ignore the settling updates fired while the document first lays out.
+        setTimeout(() => { dirty = false; }, 300);
+      },
+      onEditorUpdate: () => {
+        if (!ready) return;
+        dirty = true; setState('Unsaved changes', 'warn');
+      },
+      onContentError: () => setState('Some content could not be read', 'bad'),
+      onException: ({ error } = {}) => console.warn('Word editor:', error),
+    });
+  } catch (e) {
+    m.close();
+    throw e;
+  }
+}
+
 function extractDocStrings(u8) {
   const isMimeHeader = (str) => {
     if (!str) return false;
@@ -3372,11 +3513,16 @@ async function openPreview(name) {
         <button class="icon-btn" data-move-item title="Move file (Ctrl+X)">${icon('move')}</button>
         <button class="icon-btn danger" data-del title="Move to Trash">${icon('trash')}</button>
       ` : ''}
+      ${isDoc && edit ? `<button class="btn primary" data-save-doc hidden>${icon('save')} Save</button>` : ''}
       <a class="btn primary" href="${url}?download" style="margin:0 4px">${icon('download')} Download</a>`,
     body: `<div class="preview-body"><div class="spin">Loading preview…</div></div>`,
+    onClose: () => { if (docDirty) toast('Unsaved edits were discarded', { error: true }); },
   });
   const body = $('.preview-body', m.el);
   let text = null;
+  // Set when a .docx was drawn with full formatting: it can then be edited in place.
+  let docBuffer = null, docWrap = null, docDirty = false;
+  let docRaw = null; // a real Word (.docx) file: opens in the full Word editor
 
   $('[data-link]', m.el).onclick = () => copy(`${location.origin}${url}?download`, 'Download link copied');
   if (edit) {
@@ -3395,9 +3541,12 @@ async function openPreview(name) {
       const res = await fetch(url);
       if (!res.ok) throw new Error('Could not load file');
       const buffer = await res.arrayBuffer();
-      const docData = await readDocFile(buffer, name);
+      const purify = need('purify');
+      purify.catch(() => {}); // awaited only if a fallback needs it
+      const docData = await readDocFile(buffer, name, { withHtml: false });
 
       if (docData.type === 'html') {
+        await purify;
         body.innerHTML = `
           <div class="docx-preview-wrapper">
             <div class="docx-wrapper">
@@ -3407,45 +3556,47 @@ async function openPreview(name) {
             </div>
           </div>`;
       } else if (docData.type === 'openxml') {
+        docRaw = buffer;
         let rendered = false;
-        if (window.docx && typeof window.docx.renderAsync === 'function') {
-          try {
-            const wrap = document.createElement('div');
-            wrap.className = 'docx-preview-wrapper';
-            body.replaceChildren(wrap);
-            await window.docx.renderAsync(buffer, wrap, null, {
-              inWrapper: true,
-              ignoreWidth: false,
-              ignoreHeight: false,
-              breakPages: true,
-              useBase64URL: true,
-            });
-            rendered = true;
-            // Shrink pages to fit narrow screens (phones); re-fit on resize.
-            const fitPages = () => {
-              const inner = wrap.querySelector('.docx-wrapper');
-              const sec = inner?.querySelector('section.docx');
-              if (!sec) return;
-              inner.style.zoom = '';
-              const pad = parseFloat(getComputedStyle(inner).paddingLeft) * 2 || 0;
-              const cs = getComputedStyle(wrap);
-              const avail = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-              const z = Math.min(1, avail / (sec.offsetWidth + pad));
-              if (z < 1) inner.style.zoom = z.toFixed(3);
-            };
-            fitPages();
-            new ResizeObserver(fitPages).observe(wrap);
-          } catch (renderErr) {
-            console.warn('docx.renderAsync failed, falling back to clean HTML:', renderErr);
-          }
+        try {
+          const wrap = document.createElement('div');
+          wrap.className = 'docx-preview-wrapper';
+          body.replaceChildren(wrap);
+          await window.docx.renderAsync(buffer, wrap, null, {
+            inWrapper: true,
+            ignoreWidth: false,
+            ignoreHeight: false,
+            breakPages: true,
+            useBase64URL: true,
+          });
+          rendered = true;
+          docBuffer = buffer; docWrap = wrap;
+          // Shrink pages to fit narrow screens (phones); re-fit on resize.
+          const fitPages = () => {
+            const inner = wrap.querySelector('.docx-wrapper');
+            const sec = inner?.querySelector('section.docx');
+            if (!sec) return;
+            inner.style.zoom = '';
+            const pad = parseFloat(getComputedStyle(inner).paddingLeft) * 2 || 0;
+            const cs = getComputedStyle(wrap);
+            const avail = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+            const z = Math.min(1, avail / (sec.offsetWidth + pad));
+            if (z < 1) inner.style.zoom = z.toFixed(3);
+          };
+          fitPages();
+          new ResizeObserver(fitPages).observe(wrap);
+        } catch (renderErr) {
+          console.warn('docx.renderAsync failed, falling back to clean HTML:', renderErr);
         }
         if (!rendered) {
-          if (docData.html && docData.html.trim().length > 0) {
+          const { html } = await readDocFile(buffer, name);
+          await purify;
+          if (html && html.trim().length > 0) {
             body.innerHTML = `
               <div class="docx-preview-wrapper">
                 <div class="docx-wrapper">
                   <section class="docx word-paper" style="padding:54pt 54pt;max-width:816px;width:100%;min-height:1056px;box-sizing:border-box;">
-                    ${DOMPurify.sanitize(cleanDocHtml(docData.html))}
+                    ${DOMPurify.sanitize(cleanDocHtml(html))}
                   </section>
                 </div>
               </div>`;
@@ -3472,6 +3623,7 @@ async function openPreview(name) {
       const res = await fetch(url);
       if (!res.ok) throw new Error('Could not load file');
       text = await res.text();
+      await need(...(k === 'md' ? ['hljs', 'marked', 'purify'] : ['hljs']));
       if (k === 'md') {
         body.innerHTML = `<div class="markdown">${DOMPurify.sanitize(marked.parse(text))}</div>`;
         body.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
@@ -3503,13 +3655,74 @@ async function openPreview(name) {
   if (edit) {
     const editBtn = $('[data-edit]', m.el);
     if (editBtn) {
-      editBtn.onclick = () => {
+      editBtn.onclick = async () => {
+        if (isDoc && docEditing) return toggleDocEdit();
+        if (isDoc && docRaw) {
+          editBtn.disabled = true;
+          const t = setTimeout(() => toast('Opening the Word editor…'), 400);
+          try {
+            await openWordEditor(name, docRaw);
+            m.close();
+            return;
+          } catch (e) {
+            if (!docWrap) { toastError(e.message || 'Could not open the Word editor'); return; }
+            toast(`${e.message || 'Word editor unavailable'} — editing text only`, { error: true });
+            return toggleDocEdit();
+          } finally {
+            clearTimeout(t); editBtn.disabled = false;
+          }
+        }
         m.close();
         if (isDoc) openDocEditor(name);
         else if (text != null) openEditor(name, text);
       };
     }
   }
+
+  // In-place .docx editing: type straight into the formatted preview; saving
+  // writes only the changed text back into the original file, so fonts,
+  // spacing, tables and layout stay exactly as they were.
+  let baseline = null, docEditing = false, docSaving = false;
+  const saveBtn = $('[data-save-doc]', m.el);
+  const pages = () => [...docWrap.querySelectorAll('section.docx')];
+  function toggleDocEdit() {
+    docEditing = !docEditing;
+    if (docEditing && !baseline) {
+      baseline = previewParaTexts(docWrap);
+      docWrap.addEventListener('input', () => { docDirty = true; });
+    }
+    const editBtn = $('[data-edit]', m.el);
+    editBtn.classList.toggle('active', docEditing);
+    editBtn.title = docEditing ? 'Stop editing' : 'Edit in browser';
+    docWrap.classList.toggle('doc-editing', docEditing);
+    saveBtn.hidden = !docEditing;
+    pages().forEach(el => docEditing ? el.setAttribute('contenteditable', 'true') : el.removeAttribute('contenteditable'));
+    if (docEditing) {
+      try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch {}
+      pages()[0]?.focus();
+      toast('Editing — tap any text to change it, then Save');
+    }
+  }
+  if (saveBtn) saveBtn.onclick = async () => {
+    if (docSaving || !docBuffer) return;
+    if (!docDirty) return toast('No changes to save');
+    docSaving = true; saveBtn.disabled = true;
+    try {
+      const after = previewParaTexts(docWrap);
+      const r = await applyPreviewEdits(new Blob([docBuffer]), baseline, after);
+      await uploadOne(parts, new File([r.blob], name, { type: DOCX_MIME }), { overwrite: true });
+      docBuffer = await r.blob.arrayBuffer();
+      baseline = after;
+      docDirty = false;
+      if (r.unapplied) toast(`Saved, but ${plural(r.unapplied, 'change')} could not be placed in the file`, { error: true, sticky: true });
+      else toast('Document saved');
+      changed();
+    } catch (e) {
+      toastError(e.message || 'Failed to save document');
+    } finally {
+      docSaving = false; saveBtn.disabled = false;
+    }
+  };
 }
 
 /* ---------- Fill Name & USN (template filling) ----------
@@ -3574,6 +3787,7 @@ const countIn = (text, key) => (key ? text.split(key).length - 1 : 0);
 // How many times each key occurs in a file (matches across Word's split runs).
 async function countPlaceholders(name, data, keys) {
   if (ext(name) !== 'docx') return keys.map(k => countIn(data, k));
+  await need('docx');
   const zip = await JSZip.loadAsync(data);
   const counts = keys.map(() => 0);
   for (const p of Object.keys(zip.files).filter(p => DOCX_TEXT_PARTS.test(p))) {
@@ -3588,6 +3802,7 @@ async function countPlaceholders(name, data, keys) {
 }
 
 async function fillDocx(buf, pairs) {
+  await need('docx');
   const zip = await JSZip.loadAsync(buf);
   const parts = Object.keys(zip.files).filter(p => DOCX_TEXT_PARTS.test(p));
   let count = 0;
@@ -3627,19 +3842,8 @@ function saveBlob(blob, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 }
 
-const loadedScripts = {};
-function loadScript(src) {
-  return (loadedScripts[src] ||= new Promise((resolve, reject) => {
-    const s = Object.assign(document.createElement('script'), { src, onload: resolve });
-    s.onerror = () => { delete loadedScripts[src]; reject(new Error('Could not load the PDF library — check your connection')); };
-    document.head.appendChild(s);
-  }));
-}
 async function loadPdfLibs() {
-  await Promise.all([
-    loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
-    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
-  ]);
+  await need('pdf', 'docx');
   return window.jspdf.jsPDF;
 }
 
@@ -3868,12 +4072,35 @@ function alignKeys(a, b) {
   return pairs;
 }
 
+// Only the part of the paragraph that actually changed is rewritten, inside the
+// run where the change starts, so bold/italic/colour of the rest is kept.
 function setParaText(para, text) {
   const ts = ownTextNodes(para);
   if (ts.length) {
-    ts[0].textContent = text;
-    ts[0].setAttributeNS(XML_NS, 'xml:space', 'preserve');
-    ts.slice(1).forEach(t => { t.textContent = ''; });
+    const old = ts.map(t => t.textContent).join('');
+    if (old === text) return;
+    let p = 0;
+    while (p < old.length && p < text.length && old[p] === text[p]) p++;
+    let s = 0;
+    while (s < old.length - p && s < text.length - p && old[old.length - 1 - s] === text[text.length - 1 - s]) s++;
+    const q = old.length - s, mid = text.slice(p, text.length - s);
+    // Replaced text goes into the run it replaces; pure typing at a run
+    // boundary extends the run before it (like Word does).
+    let off = 0, target = null;
+    for (const t of ts) {
+      const len = t.textContent.length;
+      if (!target && len && (q > p || p === 0 ? off <= p && p < off + len : off < p && p <= off + len)) target = t;
+      off += len;
+    }
+    target ||= ts.at(-1);
+    off = 0;
+    for (const t of ts) {
+      const s0 = t.textContent, len = s0.length;
+      const clamp = (n) => Math.max(0, Math.min(len, n));
+      const next = s0.slice(0, clamp(p - off)) + (t === target ? mid : '') + s0.slice(clamp(q - off));
+      off += len;
+      if (next !== s0) { t.textContent = next; t.setAttributeNS(XML_NS, 'xml:space', 'preserve'); }
+    }
     return;
   }
   const doc = para.ownerDocument;
@@ -3887,6 +4114,7 @@ function setParaText(para, text) {
 // paragraph, so untouched formatting stays exactly as it was. `before` is the
 // preview's paragraph text when rendered, `after` the text after editing.
 async function applyPreviewEdits(blob, before, after) {
+  await need('docx');
   const zip = await JSZip.loadAsync(await blob.arrayBuffer());
   const xml = await zip.file('word/document.xml').async('string');
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
@@ -4008,6 +4236,7 @@ function openFillPreview(out, onDownload) {
       if (o.text != null) host.innerHTML = `<pre class="fill-text">${esc(o.text)}</pre>`;
       else {
         host.replaceChildren();
+        await need('docx');
         await window.docx.renderAsync(await o.blob.arrayBuffer(), host, null, {
           inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true, useBase64URL: true,
         });

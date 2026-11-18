@@ -76,9 +76,10 @@ body {
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
-svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
-button { font: inherit; color: inherit; cursor: pointer; }
-a { color: inherit; text-decoration: none; }
+/* :where() keeps these resets at zero specificity, and they skip the Word editor's own UI. */
+:where(svg:not(.wd-doc *, .wd-toolbar *, [class*="sd-"] *, [class*="toolbar-dropdown"] *)) { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+:where(button:not(.wd-doc *, .wd-toolbar *, [class*="sd-"] *, [class*="toolbar-dropdown"] *)) { font: inherit; color: inherit; cursor: pointer; }
+:where(a:not(.wd-doc *, .wd-toolbar *, [class*="sd-"] *, [class*="toolbar-dropdown"] *)) { color: inherit; text-decoration: none; }
 
 /* Top bar */
 .topbar {
@@ -233,9 +234,9 @@ main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 80px; }
 }
 .modal {
   background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-lg);
-  width: min(420px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; animation: pop .18s;
+  width: min(420px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; animation: pop .18s;
 }
-.modal.wide { width: min(1000px, 100%); height: calc(100vh - 64px); }
+.modal.wide { width: min(1000px, 100%); height: calc(100vh - 64px); height: calc(100dvh - 64px); }
 .modal-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
 .modal-head h2 { font-size: 15px; margin: 0; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .modal-head .sub { color: var(--muted); font-size: 12.5px; }
@@ -290,10 +291,6 @@ main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 80px; }
 /* Editor */
 .editor-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .editor-name { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; padding: 12px 16px; font-family: var(--mono); font-size: 13px; box-shadow: none !important; }
-.editor-area {
-  flex: 1; width: 100%; resize: none; border: 0; outline: 0; padding: 16px;
-  background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; line-height: 1.65; tab-size: 2;
-}
 
 /* Preview */
 .preview-body { flex: 1; overflow: auto; min-height: 0; background: var(--bg); border-radius: 0 0 16px 16px; }
@@ -381,7 +378,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 80px; }
   main { padding-top: 20px; }
   .brand span:last-child { display: none; }
   .search { width: 100%; }
-  .modal.wide { height: calc(100vh - 32px); }
+  .modal.wide { height: calc(100vh - 32px); height: calc(100dvh - 32px); }
   .markdown { padding: 18px; }
 }
 
@@ -495,7 +492,9 @@ main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 80px; }
 .modal.ms-word-modal.fullscreen {
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
   max-height: 100vh !important;
+  max-height: 100dvh !important;
   border-radius: 0 !important;
   border: 0 !important;
   position: fixed !important;
@@ -1513,7 +1512,7 @@ netlify-drawer,
 }
 
 /* Context Menu */
-.context-menu {
+.ctx-menu {
   position: fixed;
   z-index: 1000;
   min-width: 200px;
@@ -1526,7 +1525,7 @@ netlify-drawer,
   user-select: none;
   animation: pop .1s ease-out;
 }
-.context-menu-item {
+.ctx-menu-item {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1541,35 +1540,35 @@ netlify-drawer,
   transition: .1s;
   font-weight: 500;
 }
-.context-menu-item:hover {
+.ctx-menu-item:hover {
   background: var(--surface-2);
 }
-.context-menu-item.danger {
+.ctx-menu-item.danger {
   color: var(--danger);
 }
-.context-menu-item.danger:hover {
+.ctx-menu-item.danger:hover {
   background: var(--danger-soft);
 }
-.context-menu-item[disabled] {
+.ctx-menu-item[disabled] {
   opacity: 0.4;
   cursor: not-allowed;
   pointer-events: none;
 }
-.context-menu-item svg {
+.ctx-menu-item svg {
   width: 15px;
   height: 15px;
   color: var(--muted);
   flex-shrink: 0;
 }
-.context-menu-item.danger svg {
+.ctx-menu-item.danger svg {
   color: var(--danger);
 }
-.context-menu-divider {
+.ctx-menu-divider {
   height: 1px;
   background: var(--border);
   margin: 4px 0;
 }
-.context-menu-shortcut {
+.ctx-menu-shortcut {
   margin-left: auto;
   font-size: 11px;
   color: var(--muted);
@@ -1774,4 +1773,39 @@ mark.fill-mark { background: #fde047; color: #111; border-radius: 3px; box-shado
   .word-titlebar-right { gap: 4px; flex-shrink: 0; }
   .word-action-btn { padding: 5px 8px; }
   .word-action-btn[data-act="download"] span { display: none; }
+}
+
+/* In-place .docx editing in the file preview */
+.modal-head [data-save-doc][hidden] { display: none; }
+.modal-head .icon-btn[data-edit].active { background: var(--accent); color: #fff; }
+.docx-preview-wrapper.doc-editing section.docx { outline: 2px dashed var(--accent); outline-offset: 3px; cursor: text; }
+.docx-preview-wrapper.doc-editing section.docx:focus { outline-style: solid; }
+
+/* ---------- Word editor (SuperDoc) ---------- */
+.modal.wd-modal { width: min(1280px, 100%); height: calc(100vh - 32px); height: calc(100dvh - 32px); max-height: none; overflow: hidden; }
+.wd-app { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.wd-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); min-width: 0; }
+.wd-file { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; font-weight: 600; }
+.wd-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wd-state { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.wd-state:empty { display: none; }
+.wd-state.ok { color: #15803d; }
+.wd-state.warn { color: #b45309; }
+.wd-state.bad { color: #b91c1c; }
+@media (prefers-color-scheme: dark) {
+  .wd-state.ok { color: #4ade80; } .wd-state.warn { color: #fbbf24; } .wd-state.bad { color: #f87171; }
+}
+.wd-bar-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+/* SuperDoc's UI is light-themed: keep its toolbar and page area light in dark mode too. */
+.wd-toolbar { background: #fff; color: #1f2937; border-bottom: 1px solid #e5e7eb; overflow-x: auto; flex-shrink: 0; color-scheme: light; }
+.wd-doc { flex: 1; min-height: 0; overflow: hidden; background: #f3f4f6; color-scheme: light; }
+.wd-doc > div { height: 100%; }
+.wd-doc .superdoc { justify-content: center; } /* centre the page like Word */
+@media (max-width: 640px) {
+  .modal-bg.bg-wd-modal { padding: 0; }
+  .modal.wd-modal { width: 100%; height: 100vh; height: 100dvh; border-radius: 0; border: 0; }
+  .wd-bar { padding: 8px; gap: 6px; }
+  .wd-bar-actions .btn { padding: 7px 10px; }
+  .wd-bar-actions .btn span { display: none; }
+  .wd-state { display: none; }
 }
