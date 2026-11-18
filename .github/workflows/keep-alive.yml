@@ -2,45 +2,54 @@ name: Keep Supabase Active
 
 on:
   schedule:
-    # Runs every 2 days at 06:00 UTC (well within the 7-day Supabase pause window)
+    # Every 2 days at 06:00 UTC (well within Supabase's 7-day free-tier pause window)
     - cron: '0 6 */2 * *'
-  workflow_dispatch: # Allows manual trigger from GitHub Actions tab anytime
+  workflow_dispatch: # Run it by hand from the Actions tab anytime
 
 jobs:
   ping-supabase:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase Storage API
+      - name: Ping Supabase
         env:
+          # Set at least one: APP_URL (your deployed site, e.g. https://xyz.netlify.app)
+          # or SUPABASE_URL + SUPABASE_SERVICE_KEY. Repo → Settings → Secrets → Actions.
+          APP_URL: ${{ secrets.APP_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           SUPABASE_BUCKET: ${{ secrets.SUPABASE_BUCKET || 'code-saver' }}
-          APP_URL: ${{ secrets.APP_URL }}
         run: |
-          echo "Sending keep-alive heartbeat..."
-          
-          # 1. Ping deployed DevLocker app if APP_URL is configured
+          # Fails the run (red ❌ + email from GitHub) unless at least one ping succeeds,
+          # so a missing secret or a paused project can't hide behind a green check.
+          ok=0
+
           if [ -n "$APP_URL" ]; then
-            echo "Pinging DevLocker app at $APP_URL/api/keepalive..."
-            curl -fsSL --retry 3 --max-time 15 "$APP_URL/api/keepalive" || echo "App ping returned warning"
+            echo "Pinging the app at ${APP_URL%/}/api/keepalive ..."
+            if curl -fsS --retry 3 --max-time 30 "${APP_URL%/}/api/keepalive"; then
+              echo; echo "✅ App ping OK (the app pinged Supabase)"; ok=1
+            else
+              echo "❌ App ping failed"
+            fi
           fi
 
-          # 2. Ping Supabase directly if credentials exist in GitHub Secrets
           if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_KEY" ]; then
-            echo "Pinging Supabase storage API directly at $SUPABASE_URL..."
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-              "$SUPABASE_URL/storage/v1/object/list/$SUPABASE_BUCKET" \
+            echo "Pinging Supabase Storage directly ..."
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --retry 3 --max-time 30 -X POST \
+              "${SUPABASE_URL%/}/storage/v1/object/list/$SUPABASE_BUCKET" \
               -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
               -H "Content-Type: application/json" \
               -d '{"prefix":"","limit":1}')
-            
             echo "Supabase HTTP status: $STATUS"
             if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
-              echo "✅ Supabase project successfully kept active!"
+              echo "✅ Supabase ping OK"; ok=1
             else
-              echo "⚠️ Supabase responded with status $STATUS"
+              echo "❌ Supabase ping failed (paused project or wrong key?)"
             fi
-          else
-            echo "ℹ️ Tip: Add SUPABASE_URL and SUPABASE_SERVICE_KEY to your GitHub Repository Secrets to keep Supabase awake even when your local machine is off."
           fi
 
+          if [ "$APP_URL$SUPABASE_URL" = "" ]; then
+            echo "::error::No secrets set. Add APP_URL (or SUPABASE_URL + SUPABASE_SERVICE_KEY) in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          [ "$ok" = 1 ] || { echo "::error::Keep-alive ping failed — Supabase may pause."; exit 1; }
