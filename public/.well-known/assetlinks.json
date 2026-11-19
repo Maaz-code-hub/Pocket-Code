@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.netlify.devlocker",
+    "sha256_cert_fingerprints": ["A3:CC:DE:A2:E5:9A:62:EA:2E:B9:B9:6D:64:7C:91:9C:26:CB:B5:B7:79:32:95:80:CB:D5:68:79:79:4D:64:60"]
+  }
+}]

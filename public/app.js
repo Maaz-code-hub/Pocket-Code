@@ -4515,3 +4515,25 @@ async function start() {
   loadUsage();
 }
 start();
+
+/* ---------- Offline support ----------
+   sw.js keeps the app and every folder/file you've opened, so the site (and
+   the Android app) opens offline with the last data you saw. */
+function showOffline(force = false) {
+  let bar = $('#offlineBar');
+  if (navigator.onLine && !force) { bar?.remove(); return; }
+  if (bar) return;
+  bar = Object.assign(document.createElement('div'), {
+    id: 'offlineBar',
+    textContent: "You're offline — showing your last saved copy. Changes can't be saved until you reconnect.",
+  });
+  bar.style.cssText = 'position:sticky;top:0;z-index:50;padding:6px 12px;text-align:center;font-size:13px;background:#b45309;color:#fff';
+  document.body.prepend(bar);
+}
+addEventListener('offline', () => showOffline());
+addEventListener('online', () => { showOffline(); toast('Back online'); start(); });
+showOffline();
+if ('serviceWorker' in navigator && isSecureContext) {
+  addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  navigator.serviceWorker.addEventListener('message', (e) => { if (e.data?.type === 'offline-copy') showOffline(true); });
+}

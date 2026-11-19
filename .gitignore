@@ -17,3 +17,12 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Android build (signing key must stay private — back it up!)
+android/local.properties
+android/keystore.properties
+android/*.keystore
+android/.gradle/
+android/build/
+android/app/build/
+dist/
