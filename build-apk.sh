@@ -4,8 +4,7 @@
 # First run also:
 #   - creates the signing key  android/devlocker.keystore  (BACK IT UP: without
 #     it you can't ship updates that install over the old app)
-#   - writes public/.well-known/assetlinks.json — commit & push it so the app
-#     opens full-screen without Chrome's address bar.
+#   - writes public/.well-known/assetlinks.json (links the app to the site).
 #
 # Needs: JDK 17 and the Android SDK (ANDROID_HOME, default ~/Android/Sdk).
 set -euo pipefail
@@ -74,5 +73,4 @@ EOF
 echo
 echo "✓ APK: dist/DevLocker.apk"
 echo "✓ public/.well-known/assetlinks.json written (fingerprint $SHA)"
-echo "  Commit & push it so the app opens without the address bar."
 echo "  Back up android/devlocker.keystore + android/keystore.properties somewhere safe."

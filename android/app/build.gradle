@@ -2,10 +2,8 @@ plugins {
     id 'com.android.application'
 }
 
-// ---- The site this app opens. Change it here if the domain ever changes,
-// ---- and update public/.well-known/assetlinks.json to match.
+// ---- The site this app opens. Change it here if the domain ever changes.
 def siteHost = 'devlocker.netlify.app'
-def siteUrl = "https://${siteHost}/"
 
 // Release signing: created by ../build-apk.sh (never commit these files).
 def keystoreProps = new Properties()
@@ -18,16 +16,14 @@ android {
 
     defaultConfig {
         applicationId 'app.netlify.devlocker'
-        minSdk 21
+        minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName '1.0.0'
-
-        manifestPlaceholders = [hostName: siteHost]
-        resValue 'string', 'launchUrl', siteUrl
-        resValue 'string', 'assetStatements',
-            "[{ \\\"relation\\\": [\\\"delegate_permission/common.handle_all_urls\\\"], \\\"target\\\": {\\\"namespace\\\": \\\"web\\\", \\\"site\\\": \\\"https://${siteHost}\\\"}}]"
+        versionCode 2
+        versionName '2.0.0'
+        buildConfigField 'String', 'SITE_HOST', "\"${siteHost}\""
     }
+
+    buildFeatures { buildConfig true }
 
     signingConfigs {
         release {
@@ -51,8 +47,4 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-}
-
-dependencies {
-    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
 }

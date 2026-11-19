@@ -3211,11 +3211,7 @@ async function openDocEditor(existing = null, initialHtml = '') {
     try {
       const htmlContent = cleanDocHtml(paper.innerHTML);
       const blob = await generateStandardDocx(htmlContent);
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      await saveBlob(blob, name);
       toast('Document downloaded');
     } catch (err) {
       toastError('Failed to export document: ' + err.message);
@@ -3403,7 +3399,7 @@ async function openWordEditor(name, buffer = null) {
   saveBtn.onclick = save;
   $('[data-sd-dl]', m.el).onclick = async () => {
     if (!ready) return;
-    try { saveBlob(await exportDocx(), name); }
+    try { await saveBlob(await exportDocx(), name); }
     catch (e) { toastError('Could not export: ' + (e.message || e)); }
   };
 
@@ -3836,7 +3832,19 @@ function fillText(text, pairs) {
   return { blob: new Blob([text], { type: 'text/plain;charset=utf-8' }), text, count };
 }
 
-function saveBlob(blob, name) {
+// In the Android app, files made in the page are handed to the app, which
+// saves them to Downloads (a WebView can't download blob: links itself).
+async function saveBlob(blob, name) {
+  if (window.DevLockerApp?.saveFile) {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(blob);
+    });
+    window.DevLockerApp.saveFile(name, blob.type || '', dataUrl.slice(dataUrl.indexOf(',') + 1));
+    return;
+  }
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
@@ -4435,11 +4443,11 @@ function openFillDialog(preselect = null) {
       const base = out.length === 1
         ? out[0].name.replace(/\.[^.]+$/, '')
         : `${state.path.at(-1) || 'Files'}_${p.usn || p.name}`;
-      saveBlob(pdfBlob, `${safe(base)}.pdf`);
+      await saveBlob(pdfBlob, `${safe(base)}.pdf`);
     } else {
       // Separate downloads (no zip); a short gap keeps browsers from dropping some.
       for (const o of out) {
-        saveBlob(o.blob, o.name);
+        await saveBlob(o.blob, o.name);
         await new Promise(r => setTimeout(r, 400));
       }
     }
