@@ -154,6 +154,7 @@ const LIBS = {
   hljs: [`${CDNJS}/highlight.js/11.9.0/highlight.min.js`],
   docx: [`${CDNJS}/jszip/3.10.1/jszip.min.js`, 'https://cdn.jsdelivr.net/npm/docx-preview@0.3.4/dist/docx-preview.min.js'],
   mammoth: [`${CDNJS}/mammoth/1.6.0/mammoth.browser.min.js`],
+  pdfjs: [`${CDNJS}/pdf.js/3.11.174/pdf.min.js`],
   pdf: [`${CDNJS}/html2canvas/1.4.1/html2canvas.min.js`, `${CDNJS}/jspdf/2.5.1/jspdf.umd.min.js`],
   cm: [`${CM}/codemirror.min.js`, ...['mode/meta', 'addon/mode/loadmode', 'addon/mode/simple', 'addon/mode/overlay',
     'addon/edit/closebrackets', 'addon/edit/matchbrackets', 'addon/selection/active-line', 'addon/comment/comment',
@@ -3486,6 +3487,122 @@ function extractDocStrings(u8) {
   return utf16Paras;
 }
 
+/* ---------- PDF viewer ----------
+   Browsers with a built-in PDF viewer (desktop) show PDFs in an iframe.
+   The Android app's WebView and Chrome on Android have none, so there the
+   pages are drawn with PDF.js — which also works offline for PDFs opened
+   before. Pages are drawn as they scroll into view and freed when far away. */
+const useInlinePdf = () => !!window.DevLockerApp || navigator.pdfViewerEnabled === false;
+let pdfWorkerUrl;
+async function loadPdfJs() {
+  await need('pdfjs');
+  const lib = window.pdfjsLib;
+  if (!lib) throw new Error('Could not load the PDF viewer');
+  // A worker can't start from another site's URL, so it runs from a local copy.
+  if (!pdfWorkerUrl) {
+    const res = await fetch(`${CDNJS}/pdf.js/3.11.174/pdf.worker.min.js`);
+    if (!res.ok) throw new Error('Could not load the PDF viewer');
+    pdfWorkerUrl = URL.createObjectURL(new Blob([await res.text()], { type: 'text/javascript' }));
+    lib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+  }
+  return lib;
+}
+
+async function renderPdf(body, url) {
+  body.innerHTML = '<div class="spin">Loading PDF…</div>';
+  const [lib, data] = await Promise.all([
+    loadPdfJs(),
+    fetch(url).then(r => { if (!r.ok) throw new Error('Could not load file'); return r.arrayBuffer(); }),
+  ]);
+  const doc = await lib.getDocument({ data }).promise;
+  const first = (await doc.getPage(1)).getViewport({ scale: 1 });
+
+  body.innerHTML = `
+    <div class="pdf-view">
+      <div class="pdf-bar">
+        <button class="icon-btn" data-z="-1" title="Zoom out">−</button>
+        <span class="pdf-zoom">100%</span>
+        <button class="icon-btn" data-z="1" title="Zoom in">+</button>
+        <span class="pdf-count">${plural(doc.numPages, 'page')}</span>
+      </div>
+      <div class="pdf-pages"></div>
+    </div>`;
+  const pagesEl = $('.pdf-pages', body);
+  const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
+  let zi = 2;
+  const pageWidth = () => Math.max(200, Math.min(pagesEl.clientWidth - 24, 900)) * ZOOMS[zi];
+
+  const pages = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const el = document.createElement('div');
+    el.className = 'pdf-page';
+    el.style.aspectRatio = `${first.width} / ${first.height}`;
+    el.dataset.n = i;
+    el.appendChild(document.createElement('canvas'));
+    pagesEl.appendChild(el);
+    pages.push({ el, drawn: 0, task: null });
+  }
+  const sizePages = () => pages.forEach(p => (p.el.style.width = `${pageWidth()}px`));
+  sizePages();
+
+  async function draw(p) {
+    const width = p.el.clientWidth;
+    if (!width || p.drawn === width) return;
+    p.drawn = width;
+    p.task?.cancel();
+    try {
+      const page = await doc.getPage(+p.el.dataset.n);
+      const base = page.getViewport({ scale: 1 });
+      p.el.style.aspectRatio = `${base.width} / ${base.height}`;
+      const scale = (width / base.width) * Math.min(window.devicePixelRatio || 1, 3);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      p.task = page.render({ canvasContext: canvas.getContext('2d'), viewport });
+      await p.task.promise;
+      if (p.drawn === width) p.el.replaceChildren(canvas);
+    } catch (e) {
+      if (e?.name !== 'RenderingCancelledException') p.drawn = 0;
+    }
+  }
+  const forget = (p) => {
+    if (!p.drawn) return;
+    p.task?.cancel();
+    p.drawn = 0;
+    p.el.replaceChildren(document.createElement('canvas'));
+  };
+
+  const visible = new Set();
+  const io = new IntersectionObserver((entries) => {
+    if (!body.isConnected) return;
+    for (const en of entries) {
+      const p = pages[en.target.dataset.n - 1];
+      if (en.isIntersecting) { visible.add(p); draw(p); } else { visible.delete(p); forget(p); }
+    }
+  }, { root: body, rootMargin: '1500px 0px' });
+  pages.forEach(p => io.observe(p.el));
+
+  body.querySelectorAll('[data-z]').forEach(b => b.onclick = () => {
+    const next = Math.min(ZOOMS.length - 1, Math.max(0, zi + Number(b.dataset.z)));
+    if (next === zi) return;
+    // Keep the same spot of the document in view while zooming.
+    const ratio = body.scrollTop / Math.max(1, body.scrollHeight);
+    zi = next;
+    $('.pdf-zoom', body).textContent = `${Math.round(ZOOMS[zi] * 100)}%`;
+    sizePages();
+    body.scrollTop = ratio * body.scrollHeight;
+    visible.forEach(draw);
+  });
+  // Rotating the phone changes the width: redraw sharp.
+  // (It also fires when the preview closes: then free the document.)
+  const ro = new ResizeObserver(() => {
+    if (!body.isConnected) { ro.disconnect(); io.disconnect(); doc.destroy(); return; }
+    sizePages(); visible.forEach(draw);
+  });
+  ro.observe(pagesEl);
+}
+
 /* ---------- Preview ---------- */
 async function openPreview(name) {
   const parts = [...state.path, name];
@@ -3529,7 +3646,10 @@ async function openPreview(name) {
 
   try {
     if (k === 'img') body.innerHTML = `<div class="preview-center"><img src="${url}" alt="${esc(name)}"></div>`;
-    else if (k === 'pdf') body.innerHTML = `<iframe src="${url}" title="${esc(name)}"></iframe>`;
+    else if (k === 'pdf') {
+      if (useInlinePdf()) await renderPdf(body, url);
+      else body.innerHTML = `<iframe src="${url}" title="${esc(name)}"></iframe>`;
+    }
     else if (k === 'video') body.innerHTML = `<div class="preview-center"><video src="${url}" controls></video></div>`;
     else if (k === 'audio') body.innerHTML = `<div class="preview-center"><audio src="${url}" controls></audio></div>`;
     else if (k === 'docx') {
